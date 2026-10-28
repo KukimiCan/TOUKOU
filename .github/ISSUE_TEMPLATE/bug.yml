@@ -1,0 +1,27 @@
+name: バグ報告
+description: 動きがおかしい、エラーが出る
+labels: ["bug"]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      description: どうするとおかしくなるか
+      placeholder: |
+        1. /timetable を開く
+        2. 「追加」を押す
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待した動き
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 実際の動き
+      description: エラーの文章やスクリーンショット。API キーなどの秘密情報は貼らないこと
+    validations:
+      required: true

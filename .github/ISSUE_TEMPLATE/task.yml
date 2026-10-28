@@ -1,0 +1,45 @@
+name: タスク
+description: 作る機能や作業（1 つの issue = 1 つの PR になる大きさ）
+labels: []
+body:
+  - type: dropdown
+    id: role
+    attributes:
+      label: 役割
+      description: 作成後、右側の Labels でも同じ役割のラベル（role:front など）を付けてください
+      options:
+        - front
+        - back
+        - AI
+        - DB+security
+        - 全員
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: やること
+      description: 何を作るか。docs/spec.md のどの部分か
+      placeholder: 例）ホーム画面に「次の授業」カードを表示する（spec.md 3 章）
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: 完了条件
+      description: これができたら終わり、という確認項目
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: depends
+    attributes:
+      label: 関係する issue・待っているもの
+      description: 他の issue が終わらないとできない場合は書く（例：#15 の API 待ち。それまでは mock で作る）
+  - type: textarea
+    id: notes
+    attributes:
+      label: メモ
+      description: 参考資料、画面のイメージなど
