@@ -118,12 +118,14 @@ TOUKOU は AI エージェントと一緒に開発する前提です。どれを
 | ------------------------- | -------------------------------------------- |
 | Claude Code               | `CLAUDE.md`（中身は `AGENTS.md` を読み込む） |
 | Codex                     | `AGENTS.md`                                  |
+| Antigravity               | `AGENTS.md`                                  |
 | GitHub Copilot（VS Code） | `AGENTS.md`                                  |
 
 各ツールの公式サイトの手順で入れて、**TOUKOU のフォルダを開いた状態で**起動してください。
 AI エージェントは `AGENTS.md` を読んで、TOUKOU のルール（自分の担当フォルダだけを触る、など）に従って作業します。
 
 使い方は [workflow.md](workflow.md) を見てください。
+Antigravity と無料の Gemini で始める人は、[はじめての AI 担当ガイド](guides/ai-beginner-antigravity.md) に、準備から最初の提出まで一歩ずつ書いてあります。
 
 ## 9. 最後の確認
 

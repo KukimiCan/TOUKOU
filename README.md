@@ -14,6 +14,8 @@
 | 4    | [docs/architecture.md](docs/architecture.md)       | フォルダ構成と役割分担                                                                                                                            |
 | 5    | `docs/roles/`                                      | 自分の役割の説明（[front](docs/roles/front.md) / [back](docs/roles/back.md) / [AI](docs/roles/ai.md) / [DB+security](docs/roles/db-security.md)） |
 
+プログラミングが初めての人向けに、[docs/guides/](docs/guides/) に一歩ずつのガイドがあります（[AI 担当：Antigravity + 無料の Gemini](docs/guides/ai-beginner-antigravity.md)）。
+
 困ったら [docs/glossary.md](docs/glossary.md)（用語集）と [docs/api.md](docs/api.md)（API 一覧）も見てください。
 
 ## すぐ動かす（環境構築が済んでいる人向け）
