@@ -1,5 +1,5 @@
 name: タスク
-description: 作る機能や作業（1 つの issue = 1 つの PR になる大きさ）
+description: 作る機能や作業（1 つの issue = 1 つの PR。AI エージェントと 1〜2 時間で終わる大きさ）
 labels: []
 body:
   - type: dropdown

@@ -14,11 +14,12 @@
 | push                     | 自分のパソコンの commit を GitHub に送ること                                                        |
 | pull                     | GitHub の最新の変更を自分のパソコンに取り込むこと                                                   |
 | issue                    | やること・バグ・相談を書くチケット。1 つの作業に 1 つ                                               |
-| PR（Pull Request）       | 「自分のブランチの変更を main に入れてください」というお願い。レビューを受けてから merge する       |
+| PR（Pull Request）       | 「自分のブランチの変更を main に入れてください」というお願い。CI が通ったら merge する              |
 | merge                    | ブランチの変更を別のブランチ（main など）に合流させること                                           |
 | コンフリクト（conflict） | 2 人が同じファイルの同じ場所を変えて、Git がどちらを残すか決められない状態                          |
 | レビュー                 | 他の人の変更を見て、問題が無いか確かめること                                                        |
 | CI                       | PR を出すと GitHub が自動で動かすチェック（lint、型チェック、ビルド）                               |
+| sub-issue                | 親 issue を小さく分けた issue。作業は sub-issue 単位で行う                                          |
 | ラベル                   | issue や PR に付ける目印。`role:front` など                                                         |
 
 ## 開発
