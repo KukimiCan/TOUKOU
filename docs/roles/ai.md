@@ -2,6 +2,8 @@
 
 AI（OpenAI / Google Gemini）に、解説・要約・確認問題などを作らせる関数を作る役割です。
 
+> プログラミングが初めての人は、先に [はじめての AI 担当ガイド（Antigravity + 無料の Gemini）](../guides/ai-beginner-antigravity.md) を読んでください。
+
 ## 触るフォルダ
 
 | フォルダ                 | 置くもの                                                 |
@@ -68,6 +70,14 @@ AI SDK の正しい書き方は、`node_modules/ai/docs/` や https://ai-sdk.dev
 
 - OpenAI と Gemini のどちらを使うか、どのモデルを使うか（**画像入力に対応したもの**）を決めて、チームに共有する
 - `.env.local` の `AI_PROVIDER` と `AI_MODEL` を全員にそろえてもらう
+
+## 無料枠の注意
+
+Gemini API の無料枠では、送った内容（文章、画像）と AI の返事が Google のサービス改善に使われ、人が読むこともあります（[利用規約](https://ai.google.dev/gemini-api/terms)）。
+
+- 試すときは、個人の情報（名前、顔、学籍番号など）が写っていない板書だけを使う
+- 配布禁止の授業資料を送らない
+- 本番で利用者の板書を扱うなら、有料枠にするか、利用者にこのことを伝える必要がある（チームで決める）
 
 ## 確認方法
 
