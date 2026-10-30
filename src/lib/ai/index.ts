@@ -7,7 +7,8 @@ import { createOpenAI } from "@ai-sdk/openai";
 export type AiProvider = "openai" | "google" | "mock";
 
 export function getAiProvider(): AiProvider {
-  const provider = process.env.AI_PROVIDER ?? "mock";
+  // 空欄（AI_PROVIDER=）も未設定と同じく mock として扱う。
+  const provider = process.env.AI_PROVIDER?.trim() || "mock";
   if (provider === "openai" || provider === "google" || provider === "mock") {
     return provider;
   }
