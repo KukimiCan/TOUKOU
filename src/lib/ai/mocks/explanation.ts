@@ -43,7 +43,8 @@ export const mockExplanation: Explanation = {
     {
       topic: "関数の連続性と微分可能性",
       explanation:
-        "微分ができるためには、前提として関数が滑らかにつながっている（連続である）必要があります。",
+        "微分ができるためには、前提として関数が途切れずにつながっている（連続である）必要があります。",
     },
   ],
+  unreadable: [],
 };

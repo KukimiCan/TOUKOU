@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * 板書解説の出力スキーマ
- * AI が板書画像から生成する解説（要約、用語、数式、省略された説明）のデータ構造
+ * AI が板書画像から生成する解説（要約、用語、数式、省略された説明、判読不能箇所）のデータ構造
  */
 export const explanationSchema = z.object({
   summary: z.string().describe("板書全体の要約・概要"),
@@ -17,7 +17,7 @@ export const explanationSchema = z.object({
   formulas: z
     .array(
       z.object({
-        formula: z.string().describe("数式や記号"),
+        formula: z.string().describe("LaTeX 形式の数式（$ で囲まない）"),
         explanation: z.string().describe("数式が表す意味や展開の説明"),
       }),
     )
@@ -32,6 +32,11 @@ export const explanationSchema = z.object({
       }),
     )
     .describe("板書では省略されているが理解に必要な補足説明一覧"),
+  unreadable: z
+    .array(z.string())
+    .describe(
+      "文字の潰れや見切れなどで判読できなかった箇所のリスト（読めない部分がなければ空配列）",
+    ),
 });
 
 export type Explanation = z.infer<typeof explanationSchema>;
