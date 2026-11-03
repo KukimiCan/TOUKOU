@@ -29,7 +29,7 @@ export const mockHomeResponse: HomeResponse = {
   ],
 };
 
-// 今週もう授業が無いとき
+// 登録された授業が無いとき
 export const mockHomeResponseNoClass: HomeResponse = {
   nextClass: null,
   reviews: [],

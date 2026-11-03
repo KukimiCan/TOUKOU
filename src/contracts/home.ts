@@ -35,7 +35,7 @@ export const freeTimeSuggestionSchema = z.object({
 });
 
 export const homeResponseSchema = z.object({
-  // 今週もう授業が無いときは null
+  // 登録された授業が無いときは null（週末なら翌週の授業を返す）
   nextClass: nextClassSchema.nullable(),
   reviews: z.array(reviewItemSchema),
   freeTimeSuggestions: z.array(freeTimeSuggestionSchema),
