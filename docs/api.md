@@ -11,7 +11,7 @@ API を追加・変更したら、この表も同じ PR で更新してくださ
 | 🚧   | GET / POST     | `/api/courses`                  | 時間割の科目の一覧・登録（今は仮の保存先、DB 待ち） | `courses.ts`  |
 | 🚧   | PATCH / DELETE | `/api/courses/[id]`             | 科目の変更・削除                                    | `courses.ts`  |
 | 🚧   | GET / PATCH    | `/api/settings`                 | 時限の時刻、移動の余裕時間                          | `settings.ts` |
-| 📝   | GET            | `/api/home`                     | 次の授業、移動開始の目安、短い復習、空きコマ提案    | `home.ts`     |
+| 🚧   | GET            | `/api/home`                     | 次の授業、移動開始の目安（復習・空きコマ提案は空）  | `home.ts`     |
 | 📝   | GET / POST     | `/api/materials`                | 資料・板書の一覧・アップロード                      |               |
 | 📝   | GET            | `/api/materials/[id]`           | 資料の詳細と AI の解説                              |               |
 | 📝   | POST           | `/api/materials/[id]/generate`  | AI で要約・解説・確認問題を作る                     |               |
