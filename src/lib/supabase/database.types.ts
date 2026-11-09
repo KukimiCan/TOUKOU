@@ -14,6 +14,39 @@ export type Database = {
   };
   public: {
     Tables: {
+      courses: {
+        Row: {
+          building: string | null;
+          day_of_week: string;
+          floor: string | null;
+          id: string;
+          name: string;
+          period: number;
+          room: string | null;
+          user_id: string;
+        };
+        Insert: {
+          building?: string | null;
+          day_of_week: string;
+          floor?: string | null;
+          id?: string;
+          name: string;
+          period: number;
+          room?: string | null;
+          user_id: string;
+        };
+        Update: {
+          building?: string | null;
+          day_of_week?: string;
+          floor?: string | null;
+          id?: string;
+          name?: string;
+          period?: number;
+          room?: string | null;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           periods: Json;
