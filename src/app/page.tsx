@@ -5,8 +5,28 @@ import { HealthStatus } from "@/components/health-status";
 import { NextClassCard } from "@/components/next-class-card";
 import { mockHomeResponse } from "@/mocks/home";
 
-export default function Home() {
+// 【一時的な処理。#65 で API の値に置き換えたら消す】
+// 仮データの開始時刻は過去の日付なので、カウントダウンを確認できるよう「今から 30 分後」に開始する形にずらす。
+// Next.js は Date.now() の結果をページに入れるとき、こうした指定（"use cache"）を求める。
+// 結果は保存されるので、基準になる「今」はビルドした時刻（その後は既定の 15 分ごとに作り直される）。
+async function getPreviewNextClass() {
+  "use cache";
   const { nextClass } = mockHomeResponse;
+  if (!nextClass) return null;
+
+  const start = Date.now() + 30 * 60_000;
+  const length =
+    new Date(nextClass.endsAt).getTime() -
+    new Date(nextClass.startsAt).getTime();
+  return {
+    ...nextClass,
+    startsAt: new Date(start).toISOString(),
+    endsAt: new Date(start + length).toISOString(),
+  };
+}
+
+export default async function Home() {
+  const nextClass = await getPreviewNextClass();
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-8">

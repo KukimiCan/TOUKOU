@@ -18,48 +18,26 @@ export function formatRemaining(ms: number): string {
   return String(s);
 }
 
-type Props = {
-  startsAt: string;
-  minutesUntilStart: number;
-};
-
-export function Countdown({ startsAt, minutesUntilStart }: Props) {
+export function Countdown({ startsAt }: { startsAt: string }) {
   // サーバーで描画するときは時刻が分からないので、画面に出てから数え始める（それまでは null）
-  const [clock, setClock] = useState<{ deadline: number; now: number } | null>(
-    null,
-  );
+  const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
-    // 数え終わる時刻。仮データのように開始時刻が過去なのに残り時間がある場合は、残り時間（分）から数える
-    const getDeadline = (now: number) => {
-      const start = new Date(startsAt).getTime();
-      return start <= now && minutesUntilStart > 0
-        ? now + minutesUntilStart * 60_000
-        : start;
-    };
-    let deadline: number | null = null;
-    const tick = () => {
-      const now = Date.now();
-      deadline ??= getDeadline(now);
-      setClock({ deadline, now });
-    };
-
+    const tick = () => setNow(Date.now());
     const first = setTimeout(tick, 0);
     const timer = setInterval(tick, 1000);
     return () => {
       clearTimeout(first);
       clearInterval(timer);
     };
-  }, [startsAt, minutesUntilStart]);
+  }, []);
 
-  if (clock === null) return null;
+  if (now === null) return null;
 
-  const remaining = clock.deadline - clock.now;
+  const remaining = new Date(startsAt).getTime() - now;
   return (
-    <p
-      className="text-2xl font-bold tabular-nums"
-      aria-label="開始までの残り時間"
-    >
+    <p className="text-2xl font-bold tabular-nums">
+      <span className="sr-only">開始まで </span>
       {remaining > 0 ? formatRemaining(remaining) : "開始"}
     </p>
   );

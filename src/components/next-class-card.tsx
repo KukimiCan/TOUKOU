@@ -25,7 +25,7 @@ const timeFormat = new Intl.DateTimeFormat("ja-JP", {
 });
 
 export function NextClassCard({ nextClass }: { nextClass: NextClass }) {
-  const { course, startsAt, endsAt, minutesUntilStart } = nextClass;
+  const { course, startsAt, endsAt } = nextClass;
   const place = [course.building, course.floor, course.room]
     .filter(Boolean)
     .join(" ");
@@ -40,7 +40,7 @@ export function NextClassCard({ nextClass }: { nextClass: NextClass }) {
     >
       <div className="mb-5 flex items-center justify-between gap-3">
         <p className="text-sm font-semibold opacity-70">次の授業</p>
-        <Countdown startsAt={startsAt} minutesUntilStart={minutesUntilStart} />
+        <Countdown startsAt={startsAt} />
       </div>
 
       <h2 className="text-2xl leading-tight font-bold">{course.name}</h2>
