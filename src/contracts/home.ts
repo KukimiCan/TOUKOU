@@ -7,16 +7,17 @@ import { courseSchema } from "./courses";
 // 日時は ISO 8601 の文字列（例: "2026-11-04T10:40:00+09:00"）
 const dateTimeSchema = z.iso.datetime({ offset: true });
 
-// 次の授業。まだ始まっていない授業のうち、一番近いもの
+// 次の授業。まだ終わっていない授業のうち、一番近いもの。
+// 授業中はその授業を返す（startsAt <= いま < endsAt なら授業中。minutesUntilStart は 0）
 export const nextClassSchema = z.object({
   course: courseSchema,
   startsAt: dateTimeSchema,
   endsAt: dateTimeSchema,
-  // 授業が始まるまでの残り時間（分）
+  // 授業が始まるまでの残り時間（分）。授業中は 0
   minutesUntilStart: z.number().int().min(0),
   // 移動を始める時刻（開始時刻 − 移動の余裕時間）
   leaveAt: dateTimeSchema,
-  // 移動を始める時刻を過ぎているとき true
+  // 移動を始める時刻を過ぎているとき true。授業中も true
   shouldLeaveNow: z.boolean(),
 });
 
