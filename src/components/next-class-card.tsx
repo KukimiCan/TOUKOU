@@ -1,11 +1,18 @@
 // front 担当のファイル。
 // ホームの「次の授業」カード。どこへ行けばいいか（建物・階数・教室）が一目で分かるようにする。
-// 右上に開始までのカウントダウン、下に移動開始の目安（#62）を出す。授業中の表示（#61）は後から足す。
+// - 次の授業が今日：右上に開始までのカウントダウン、下に移動開始の目安（#62）を出す
+// - 次の授業が明日以降（#63）：「今日の授業はありません」を大きく出し、その下に次の授業を控えめに出す
+// 授業中の表示（#61）は後から足す。
+//
+// 「今日かどうか」と残り時間は端末の時刻で決めるので、ブラウザで動く部品（Client Component）にしている。
+"use client";
+
 import type { DayOfWeek } from "@/contracts/courses";
 import type { NextClass } from "@/contracts/home";
 
 import { Countdown } from "./countdown";
 import { LeaveTime } from "./leave-time";
+import { useClassClock } from "./use-class-clock";
 
 const DAY_LABELS: Record<DayOfWeek, string> = {
   mon: "月",
@@ -25,19 +32,76 @@ const timeFormat = new Intl.DateTimeFormat("ja-JP", {
   timeZone: "Asia/Tokyo",
 });
 
+// 日本時間の日付 → "2026-11-04"（"en-CA" は年-月-日の順で表す書式）
+const dateFormat = new Intl.DateTimeFormat("en-CA", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  timeZone: "Asia/Tokyo",
+});
+
+// いまから見て、授業の日が何日後か（日本時間の日付で数える。今日なら 0）
+function daysUntil(startsAt: string, now: number): number {
+  const startDay = Date.parse(dateFormat.format(new Date(startsAt)));
+  const today = Date.parse(dateFormat.format(new Date(now)));
+  return Math.round((startDay - today) / 86_400_000);
+}
+
+// 明日以降の授業の、右上に出す日の目安："明日" / "木曜" / "来週の月曜"
+function dayLabel(days: number, dayOfWeek: DayOfWeek): string {
+  if (days === 1) return "明日";
+  const day = `${DAY_LABELS[dayOfWeek]}曜`;
+  return days >= 7 ? `来週の${day}` : day;
+}
+
 export function NextClassCard({ nextClass }: { nextClass: NextClass }) {
-  const {
-    course,
-    startsAt,
-    endsAt,
-    minutesUntilStart,
-    leaveAt,
-    shouldLeaveNow,
-  } = nextClass;
+  const { course, startsAt, endsAt, minutesUntilStart, leaveAt } = nextClass;
+  const now = useClassClock(startsAt, minutesUntilStart);
+  // 画面に出るまでは「今日かどうか」が分からないので、何も出さない（一瞬だけ）
+  if (now === null) return null;
+
+  const days = daysUntil(startsAt, now);
+  const isToday = days <= 0;
+
   const place = [course.building, course.floor, course.room]
     .filter(Boolean)
     .join(" ");
+  const details = (
+    <>
+      <InfoRow icon={<PinIcon />} label="場所" compact={!isToday}>
+        {place || <span className="opacity-70">教室が登録されていません</span>}
+      </InfoRow>
+      <InfoRow icon={<ClockIcon />} label="時限" compact={!isToday}>
+        {/* 例：水3｜12:20〜13:50 */}
+        {DAY_LABELS[course.dayOfWeek]}
+        {course.period}｜{timeFormat.format(new Date(startsAt))}〜
+        {timeFormat.format(new Date(endsAt))}
+      </InfoRow>
+    </>
+  );
 
+  // 次の授業が明日以降：一言を大きく出し、次の授業は全体に小さい文字で控えめに出す
+  // （移動開始の目安は、明日の時刻だと紛らわしいので出さない）
+  if (!isToday) {
+    return (
+      <>
+        <p className="text-2xl font-bold">今日の授業はありません</p>
+        <section
+          aria-label="次の授業"
+          className="rounded-lg border border-current/20 px-5 py-4"
+        >
+          <div className="mb-3 flex items-center justify-between gap-3 text-sm opacity-70">
+            <p className="font-semibold">次の授業</p>
+            <p className="font-semibold">{dayLabel(days, course.dayOfWeek)}</p>
+          </div>
+          <h2 className="text-lg leading-tight font-bold">{course.name}</h2>
+          <dl className="mt-2 flex flex-col gap-1">{details}</dl>
+        </section>
+      </>
+    );
+  }
+
+  // 次の授業が今日
   // 余白で情報のまとまりを表す（背景色や区切り線は使わない）
   // - 見出しの行（ラベルと残り時間）と本体の間は広く（20px）
   // - 科目名 → 場所・時限は 12px。場所と時限は同じ強さの 2 行として 6px でそろえる
@@ -48,55 +112,45 @@ export function NextClassCard({ nextClass }: { nextClass: NextClass }) {
     >
       <div className="mb-5 flex items-center justify-between gap-3">
         <p className="text-sm font-semibold opacity-70">次の授業</p>
-        <Countdown startsAt={startsAt} minutesUntilStart={minutesUntilStart} />
+        <Countdown startsAt={startsAt} now={now} />
       </div>
 
       <h2 className="text-2xl leading-tight font-bold">{course.name}</h2>
 
-      <dl className="mt-3 flex flex-col gap-1.5">
-        <InfoRow icon={<PinIcon />} label="場所">
-          {place || (
-            <span className="opacity-70">教室が登録されていません</span>
-          )}
-        </InfoRow>
-        <InfoRow icon={<ClockIcon />} label="時限">
-          {/* 例：水3｜12:20〜13:50 */}
-          {DAY_LABELS[course.dayOfWeek]}
-          {course.period}｜{timeFormat.format(new Date(startsAt))}〜
-          {timeFormat.format(new Date(endsAt))}
-        </InfoRow>
-      </dl>
+      <dl className="mt-3 flex flex-col gap-1.5">{details}</dl>
 
       {/* 3 行目：移動開始の目安（中央揃え・アイコンなし） */}
       <div className="mt-4">
-        <LeaveTime
-          startsAt={startsAt}
-          minutesUntilStart={minutesUntilStart}
-          leaveAt={leaveAt}
-          shouldLeaveNow={shouldLeaveNow}
-        />
+        <LeaveTime leaveAt={leaveAt} now={now} />
       </div>
     </section>
   );
 }
 
 // アイコン + 内容の 1 行。場所と時限で同じ見た目にする
+// compact のときは、文字とアイコンを小さくする（次の授業が明日以降のとき）
 function InfoRow({
   icon,
   label,
+  compact,
   children,
 }: {
   icon: React.ReactNode;
   label: string;
+  compact: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-1.5">
+    <div
+      className={`flex items-center gap-1.5 ${compact ? "[&_svg]:size-5" : ""}`}
+    >
       <dt>
         {icon}
         <span className="sr-only">{label}</span>
       </dt>
-      <dd className="text-xl leading-tight">{children}</dd>
+      <dd className={`leading-tight ${compact ? "text-base" : "text-xl"}`}>
+        {children}
+      </dd>
     </div>
   );
 }

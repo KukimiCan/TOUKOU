@@ -1,9 +1,6 @@
 // front 担当のファイル。
-// 授業開始までのカウントダウン（1 秒ごとに更新）。端末の時刻で数える。
+// 授業開始までのカウントダウン。時計（use-class-clock.ts）は次の授業カードが持ち、いまの時刻を受け取る。
 // 表示は h:mm:ss。上の桁が 0 のときは省く（1:05:09 → 29:59 → 5:09 → 9）。
-"use client";
-
-import { useClassClock } from "./use-class-clock";
 
 // 残りミリ秒 → "1:05:09" / "29:59" / "5:09" / "9"
 export function formatRemaining(ms: number): string {
@@ -20,16 +17,12 @@ export function formatRemaining(ms: number): string {
 
 type Props = {
   startsAt: string;
-  minutesUntilStart: number;
+  // いまの時刻（ミリ秒）
+  now: number;
 };
 
-export function Countdown({ startsAt, minutesUntilStart }: Props) {
-  // 画面に出るまでは null（何も表示しない）
-  const clock = useClassClock(startsAt, minutesUntilStart);
-  if (clock === null) return null;
-
-  const deadline = new Date(startsAt).getTime() + clock.shift;
-  const remaining = deadline - clock.now;
+export function Countdown({ startsAt, now }: Props) {
+  const remaining = new Date(startsAt).getTime() - now;
   return (
     <p
       className="text-2xl font-bold tabular-nums"
