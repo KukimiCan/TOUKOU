@@ -64,17 +64,19 @@ export function TimetableGrid({ courses, periodTimes }: Props) {
       className="grid gap-px overflow-hidden rounded border border-current/20 bg-current/20"
       style={{ gridTemplateColumns }}
     >
-      {/* 見出しの行（左上は空き） */}
-      <div role="columnheader" className="bg-background" />
-      {columns.map((col) => (
-        <div
-          key={col.day}
-          role="columnheader"
-          className={`bg-background py-1 text-center font-semibold ${col.narrow ? "text-xs opacity-50" : "text-sm"}`}
-        >
-          {DAY_LABELS[col.day]}
-        </div>
-      ))}
+      {/* 見出しの行（左上は空き）。columnheader は row の中に置く決まりがある */}
+      <div role="row" className="contents">
+        <div role="columnheader" className="bg-background" />
+        {columns.map((col) => (
+          <div
+            key={col.day}
+            role="columnheader"
+            className={`bg-background py-1 text-center font-semibold ${col.narrow ? "text-xs opacity-50" : "text-sm"}`}
+          >
+            {DAY_LABELS[col.day]}
+          </div>
+        ))}
+      </div>
 
       {periods.map((period) => {
         const start = periodTimes.find((p) => p.period === period)?.start;
