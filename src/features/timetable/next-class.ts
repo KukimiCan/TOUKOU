@@ -3,7 +3,8 @@
 //
 // 決めたこと:
 // - 時刻は日本時間で扱う。サーバー（Vercel）は UTC で動くので、+9 時間ずらして計算する（日本に夏時間は無い）
-// - 「次の授業」は、まだ始まっていない授業のうち一番近いもの。授業中なら、その次の授業を返す
+// - 「次の授業」は、まだ終わっていない授業のうち一番近いもの。授業中なら、その授業を返す
+//   （画面で「授業中」と出せるようにするため。授業中かどうかは startsAt と endsAt で判断する）
 // - 今日の授業が終わった・週末のときは、翌日以降（最大 1 週間先）から探す
 // - 時限の時刻が設定されていない授業は無視する
 import type { Course, DayOfWeek } from "@/contracts/courses";
@@ -49,10 +50,11 @@ export function findNextClass(
       if (!time) continue;
 
       const startsAt = new Date(dayStartUtc + timeToMs(time.start));
-      if (startsAt.getTime() <= now.getTime()) continue;
+      const endsAt = new Date(dayStartUtc + timeToMs(time.end));
+      // 終わった授業は飛ばす（授業中の授業は残す）
+      if (endsAt.getTime() <= now.getTime()) continue;
       if (best && startsAt >= best.startsAt) continue;
 
-      const endsAt = new Date(dayStartUtc + timeToMs(time.end));
       best = { course, startsAt, endsAt };
     }
 
