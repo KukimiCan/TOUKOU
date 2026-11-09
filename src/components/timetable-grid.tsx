@@ -3,12 +3,13 @@
 // - 列：基本は月〜金の 5 列。土日のどちらかに授業があれば 7 列にし、授業の無い土日の列は細くする
 // - 行：基本は 1〜5 限。6 限以降は、授業がある時限まで増やす
 // - 科目名：マスの幅に合わせて文字を小さくし、最低 2 文字は 1 行に入るようにする
+// - onSelectEmpty を渡すと、空いたマス（細い列を除く）を押せるようになる（科目の登録 #56）
 import type { Course, DayOfWeek } from "@/contracts/courses";
 import type { PeriodTime } from "@/contracts/settings";
 
 const WEEKDAYS: DayOfWeek[] = ["mon", "tue", "wed", "thu", "fri"];
 const WEEKEND: DayOfWeek[] = ["sat", "sun"];
-const DAY_LABELS: Record<DayOfWeek, string> = {
+export const DAY_LABELS: Record<DayOfWeek, string> = {
   mon: "月",
   tue: "火",
   wed: "水",
@@ -42,9 +43,11 @@ function getPeriods(courses: Course[]): number[] {
 type Props = {
   courses: Course[];
   periodTimes: PeriodTime[];
+  // 空いたマスが押されたときに呼ぶ（渡さなければ、マスは押せない）
+  onSelectEmpty?: (dayOfWeek: DayOfWeek, period: number) => void;
 };
 
-export function TimetableGrid({ courses, periodTimes }: Props) {
+export function TimetableGrid({ courses, periodTimes, onSelectEmpty }: Props) {
   const columns = getColumns(courses);
   const periods = getPeriods(courses);
 
@@ -101,7 +104,19 @@ export function TimetableGrid({ courses, periodTimes }: Props) {
                   role="cell"
                   className="bg-background @container min-h-16 p-1"
                 >
-                  {course && <CourseCell course={course} />}
+                  {course ? (
+                    <CourseCell course={course} />
+                  ) : (
+                    onSelectEmpty &&
+                    !col.narrow && (
+                      <button
+                        type="button"
+                        aria-label={`${DAY_LABELS[col.day]}曜 ${period}限に科目を登録`}
+                        onClick={() => onSelectEmpty(col.day, period)}
+                        className="size-full rounded-sm hover:bg-current/5 active:bg-current/10"
+                      />
+                    )
+                  )}
                 </div>
               );
             })}
