@@ -1,6 +1,6 @@
 // front 担当のファイル（ホーム画面）。
 // いまは仮データ（src/mocks/home.ts）で次の授業カードを表示する。API につなぐのは #65。
-// 授業が無いときの表示は #63、残り時間は #61、移動開始の目安は #62、空きコマ提案と復習は #64 で足す。
+// 授業が無いときの表示は #63、授業中の表示は #61、空きコマ提案と復習は #64 で足す。
 import { HealthStatus } from "@/components/health-status";
 import { NextClassCard } from "@/components/next-class-card";
 import { mockHomeResponse } from "@/mocks/home";

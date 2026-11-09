@@ -3,7 +3,7 @@
 // 表示は h:mm:ss。上の桁が 0 のときは省く（1:05:09 → 29:59 → 5:09 → 9）。
 "use client";
 
-import { useEffect, useState } from "react";
+import { useClassClock } from "./use-class-clock";
 
 // 残りミリ秒 → "1:05:09" / "29:59" / "5:09" / "9"
 export function formatRemaining(ms: number): string {
@@ -24,37 +24,12 @@ type Props = {
 };
 
 export function Countdown({ startsAt, minutesUntilStart }: Props) {
-  // サーバーで描画するときは時刻が分からないので、画面に出てから数え始める（それまでは null）
-  const [clock, setClock] = useState<{ deadline: number; now: number } | null>(
-    null,
-  );
-
-  useEffect(() => {
-    // 数え終わる時刻。仮データのように開始時刻が過去なのに残り時間がある場合は、残り時間（分）から数える
-    const getDeadline = (now: number) => {
-      const start = new Date(startsAt).getTime();
-      return start <= now && minutesUntilStart > 0
-        ? now + minutesUntilStart * 60_000
-        : start;
-    };
-    let deadline: number | null = null;
-    const tick = () => {
-      const now = Date.now();
-      deadline ??= getDeadline(now);
-      setClock({ deadline, now });
-    };
-
-    const first = setTimeout(tick, 0);
-    const timer = setInterval(tick, 1000);
-    return () => {
-      clearTimeout(first);
-      clearInterval(timer);
-    };
-  }, [startsAt, minutesUntilStart]);
-
+  // 画面に出るまでは null（何も表示しない）
+  const clock = useClassClock(startsAt, minutesUntilStart);
   if (clock === null) return null;
 
-  const remaining = clock.deadline - clock.now;
+  const deadline = new Date(startsAt).getTime() + clock.shift;
+  const remaining = deadline - clock.now;
   return (
     <p
       className="text-2xl font-bold tabular-nums"
