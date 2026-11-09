@@ -24,10 +24,8 @@ type Props = {
 export function Countdown({ startsAt, now }: Props) {
   const remaining = new Date(startsAt).getTime() - now;
   return (
-    <p
-      className="text-2xl font-bold tabular-nums"
-      aria-label="開始までの残り時間"
-    >
+    <p className="text-2xl font-bold tabular-nums">
+      <span className="sr-only">開始まで </span>
       {remaining > 0 ? formatRemaining(remaining) : "開始"}
     </p>
   );

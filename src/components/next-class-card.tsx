@@ -55,8 +55,8 @@ function dayLabel(days: number, dayOfWeek: DayOfWeek): string {
 }
 
 export function NextClassCard({ nextClass }: { nextClass: NextClass }) {
-  const { course, startsAt, endsAt, minutesUntilStart, leaveAt } = nextClass;
-  const now = useClassClock(startsAt, minutesUntilStart);
+  const { course, startsAt, endsAt, leaveAt } = nextClass;
+  const now = useClassClock();
   // 画面に出るまでは「今日かどうか」が分からないので、何も出さない（一瞬だけ）
   if (now === null) return null;
 
