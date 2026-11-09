@@ -18,23 +18,15 @@ export function formatRemaining(ms: number): string {
   return String(s);
 }
 
-type Props = {
-  startsAt: string;
-  minutesUntilStart: number;
-};
+export function Countdown({ startsAt }: { startsAt: string }) {
+  // サーバーで描画するときは時刻が分からないので、画面に出てから数え始める（それまでは null）
+  const now = useClassClock();
+  if (now === null) return null;
 
-export function Countdown({ startsAt, minutesUntilStart }: Props) {
-  // 画面に出るまでは null（何も表示しない）
-  const clock = useClassClock(startsAt, minutesUntilStart);
-  if (clock === null) return null;
-
-  const deadline = new Date(startsAt).getTime() + clock.shift;
-  const remaining = deadline - clock.now;
+  const remaining = new Date(startsAt).getTime() - now;
   return (
-    <p
-      className="text-2xl font-bold tabular-nums"
-      aria-label="開始までの残り時間"
-    >
+    <p className="text-2xl font-bold tabular-nums">
+      <span className="sr-only">開始まで </span>
       {remaining > 0 ? formatRemaining(remaining) : "開始"}
     </p>
   );

@@ -26,14 +26,7 @@ const timeFormat = new Intl.DateTimeFormat("ja-JP", {
 });
 
 export function NextClassCard({ nextClass }: { nextClass: NextClass }) {
-  const {
-    course,
-    startsAt,
-    endsAt,
-    minutesUntilStart,
-    leaveAt,
-    shouldLeaveNow,
-  } = nextClass;
+  const { course, startsAt, endsAt, leaveAt, shouldLeaveNow } = nextClass;
   const place = [course.building, course.floor, course.room]
     .filter(Boolean)
     .join(" ");
@@ -48,7 +41,7 @@ export function NextClassCard({ nextClass }: { nextClass: NextClass }) {
     >
       <div className="mb-5 flex items-center justify-between gap-3">
         <p className="text-sm font-semibold opacity-70">次の授業</p>
-        <Countdown startsAt={startsAt} minutesUntilStart={minutesUntilStart} />
+        <Countdown startsAt={startsAt} />
       </div>
 
       <h2 className="text-2xl leading-tight font-bold">{course.name}</h2>
@@ -69,12 +62,7 @@ export function NextClassCard({ nextClass }: { nextClass: NextClass }) {
 
       {/* 3 行目：移動開始の目安（中央揃え・アイコンなし） */}
       <div className="mt-4">
-        <LeaveTime
-          startsAt={startsAt}
-          minutesUntilStart={minutesUntilStart}
-          leaveAt={leaveAt}
-          shouldLeaveNow={shouldLeaveNow}
-        />
+        <LeaveTime leaveAt={leaveAt} shouldLeaveNow={shouldLeaveNow} />
       </div>
     </section>
   );

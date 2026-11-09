@@ -14,26 +14,16 @@ const timeFormat = new Intl.DateTimeFormat("ja-JP", {
   timeZone: "Asia/Tokyo",
 });
 
-type Props = Pick<
-  NextClass,
-  "startsAt" | "minutesUntilStart" | "leaveAt" | "shouldLeaveNow"
->;
+type Props = Pick<NextClass, "leaveAt" | "shouldLeaveNow">;
 
-export function LeaveTime({
-  startsAt,
-  minutesUntilStart,
-  leaveAt,
-  shouldLeaveNow,
-}: Props) {
-  const clock = useClassClock(startsAt, minutesUntilStart);
+export function LeaveTime({ leaveAt, shouldLeaveNow }: Props) {
+  const now = useClassClock();
 
   // 画面に出るまでは API の shouldLeaveNow を使い、出た後は端末の時刻で判定する
   // （ホームを開いたまま移動の時刻を過ぎたら、自動で表示が切り替わる）
-  const leaveAtMs = new Date(leaveAt).getTime();
-  const isLate =
-    clock === null ? shouldLeaveNow : clock.now >= leaveAtMs + clock.shift;
-  // 表示する時刻はずらさない（上の行の「12:20〜13:50」と合わせるため）
-  const time = timeFormat.format(new Date(leaveAtMs));
+  const leaveAtDate = new Date(leaveAt);
+  const isLate = now === null ? shouldLeaveNow : now >= leaveAtDate.getTime();
+  const time = timeFormat.format(leaveAtDate);
 
   return isLate ? (
     <p className="text-center text-xl leading-tight font-bold text-red-600 dark:text-red-400">
