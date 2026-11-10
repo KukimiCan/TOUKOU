@@ -1,7 +1,9 @@
 // front 担当のファイル。
-// 時間割画面の本体。週の表と、科目を登録するボトムシート（画面の下から出る入力欄）をまとめる。
+// 時間割画面の本体。週の表と、科目を登録・変更するボトムシート（画面の下から出る入力欄）をまとめる。
 // - 空いたマスを押すと、その曜日・時限が入った状態で登録フォームが開く（#56）
-// - 同じ曜日・時限に科目があるときは登録しない（週の表は 1 マスに 1 つしか出せないため）
+// - 科目のマスを押すと、その科目が入った状態で変更フォームが開く。シートの下から削除もできる（#57）
+// - 削除は、シートの中で「削除しますか？」と確認してから行う
+// - 同じ曜日・時限に別の科目があるときは登録・変更しない（週の表は 1 マスに 1 つしか出せないため）
 // - いまは画面の中だけで科目を持つ（再読み込みすると消える）。API につなぐのは #59
 "use client";
 
@@ -18,19 +20,40 @@ type Props = {
   periodTimes: PeriodTime[];
 };
 
-// 開いているフォームの最初の値。opened は、開くたびにフォームを空に戻すための番号
-type Draft = { dayOfWeek: DayOfWeek; period: number; opened: number };
+// シートで開いている内容
+// - create：空いたマスから開いた登録
+// - edit：科目のマスから開いた変更（confirmingDelete が true のときは、削除の確認を出す）
+// opened は、開くたびにフォームを最初の値に戻すための番号
+type Sheet =
+  | { mode: "create"; dayOfWeek: DayOfWeek; period: number; opened: number }
+  | {
+      mode: "edit";
+      course: Course;
+      confirmingDelete: boolean;
+      opened: number;
+    };
 
 export function TimetableEditor({ initialCourses, periodTimes }: Props) {
   const [courses, setCourses] = useState(initialCourses);
-  const [draft, setDraft] = useState<Draft | null>(null);
+  const [sheet, setSheet] = useState<Sheet | null>(null);
   // <dialog> は、HTML の標準の「画面の上に重ねて出す箱」。showModal() で開き、close() で閉じる
   const dialogRef = useRef<HTMLDialogElement>(null);
 
-  function open(dayOfWeek: DayOfWeek, period: number) {
-    setDraft((prev) => ({
+  function openCreate(dayOfWeek: DayOfWeek, period: number) {
+    setSheet((prev) => ({
+      mode: "create",
       dayOfWeek,
       period,
+      opened: (prev?.opened ?? 0) + 1,
+    }));
+    dialogRef.current?.showModal();
+  }
+
+  function openEdit(course: Course) {
+    setSheet((prev) => ({
+      mode: "edit",
+      course,
+      confirmingDelete: false,
       opened: (prev?.opened ?? 0) + 1,
     }));
     dialogRef.current?.showModal();
@@ -40,28 +63,68 @@ export function TimetableEditor({ initialCourses, periodTimes }: Props) {
     dialogRef.current?.close();
   }
 
-  function addCourse(input: CreateCourse): string | null {
-    const taken = courses.find(
-      (c) => c.dayOfWeek === input.dayOfWeek && c.period === input.period,
+  // 削除の確認を出す / やめて変更の画面に戻る
+  function setConfirmingDelete(confirmingDelete: boolean) {
+    setSheet((prev) =>
+      prev?.mode === "edit" ? { ...prev, confirmingDelete } : prev,
     );
-    if (taken) {
-      return `${DAY_LABELS[input.dayOfWeek]}${input.period} には「${taken.name}」があります。別の曜日・時限を選んでください。`;
-    }
+  }
+
+  // 同じ曜日・時限にある、ほかの科目（変更のときは、変えている科目そのものは数えない）
+  function findTaken(input: CreateCourse, exceptId?: string) {
+    return courses.find(
+      (c) =>
+        c.id !== exceptId &&
+        c.dayOfWeek === input.dayOfWeek &&
+        c.period === input.period,
+    );
+  }
+
+  function takenMessage(input: CreateCourse, taken: Course) {
+    return `${DAY_LABELS[input.dayOfWeek]}${input.period} には「${taken.name}」があります。別の曜日・時限を選んでください。`;
+  }
+
+  function addCourse(input: CreateCourse): string | null {
+    const taken = findTaken(input);
+    if (taken) return takenMessage(input, taken);
 
     setCourses((prev) => [...prev, { ...input, id: crypto.randomUUID() }]);
     close();
     return null;
   }
 
+  function updateCourse(id: string, input: CreateCourse): string | null {
+    const taken = findTaken(input, id);
+    if (taken) return takenMessage(input, taken);
+
+    // 任意の項目を空にしたときは消えるよう、id 以外は入力で置き換える
+    setCourses((prev) => prev.map((c) => (c.id === id ? { ...input, id } : c)));
+    close();
+    return null;
+  }
+
+  function deleteCourse(id: string) {
+    setCourses((prev) => prev.filter((c) => c.id !== id));
+    close();
+  }
+
+  const title =
+    sheet?.mode === "edit"
+      ? sheet.confirmingDelete
+        ? "科目を削除"
+        : "科目を変更"
+      : "科目を登録";
+
   return (
     <>
       <p className="text-sm opacity-70">
-        空いたマスを押すと、科目を登録できます。
+        空いたマスを押すと登録、科目を押すと変更・削除できます。
       </p>
       <TimetableGrid
         courses={courses}
         periodTimes={periodTimes}
-        onSelectEmpty={open}
+        onSelectEmpty={openCreate}
+        onSelectCourse={openEdit}
       />
 
       {/* スマホでは画面の下に横いっぱいに出し、広い画面では真ん中に出す */}
@@ -72,7 +135,7 @@ export function TimetableEditor({ initialCourses, periodTimes }: Props) {
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 id="course-dialog-title" className="text-lg font-bold">
-            科目を登録
+            {title}
           </h2>
           <button
             type="button"
@@ -83,14 +146,62 @@ export function TimetableEditor({ initialCourses, periodTimes }: Props) {
             ✕
           </button>
         </div>
-        {draft && (
+
+        {sheet?.mode === "create" && (
           <CourseForm
-            key={draft.opened}
-            initial={{ dayOfWeek: draft.dayOfWeek, period: draft.period }}
+            key={sheet.opened}
+            initial={{ dayOfWeek: sheet.dayOfWeek, period: sheet.period }}
             periodTimes={periodTimes}
             submitLabel="登録する"
             onSubmit={addCourse}
           />
+        )}
+
+        {/* 変更のフォームは、削除の確認を出している間も消さずに隠す（「やめる」で入力途中の内容に戻れるように） */}
+        {sheet?.mode === "edit" && (
+          <>
+            <div hidden={sheet.confirmingDelete}>
+              <CourseForm
+                key={sheet.opened}
+                initial={sheet.course}
+                periodTimes={periodTimes}
+                submitLabel="変更を保存"
+                onSubmit={(input) => updateCourse(sheet.course.id, input)}
+              />
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(true)}
+                className="mt-3 w-full rounded px-4 py-3 font-semibold text-red-600 dark:text-red-400"
+              >
+                この科目を削除
+              </button>
+            </div>
+
+            {sheet.confirmingDelete && (
+              <div className="flex flex-col gap-3">
+                <p className="text-base">
+                  「{sheet.course.name}」を削除しますか？
+                </p>
+                <p className="text-sm opacity-70">
+                  時間割から消えます。元に戻せません。
+                </p>
+                <button
+                  type="button"
+                  onClick={() => deleteCourse(sheet.course.id)}
+                  className="mt-2 rounded bg-red-600 px-4 py-3 font-semibold text-white dark:bg-red-500"
+                >
+                  削除する
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDelete(false)}
+                  className="rounded border border-current/30 px-4 py-3 font-semibold"
+                >
+                  やめる
+                </button>
+              </div>
+            )}
+          </>
         )}
       </dialog>
     </>

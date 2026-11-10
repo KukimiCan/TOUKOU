@@ -1,6 +1,6 @@
 // front 担当のファイル。
 // 科目の入力フォーム（曜日・時限・科目名・建物・階数・教室）。
-// 登録（#56）で使う。変更（#57）でも使い回せるよう、最初の値と「送ったときの処理」を外から受け取る。
+// 登録（#56）と変更（#57）で使い回す。最初の値と「送ったときの処理」を外から受け取る。
 // 入力は contracts の zod スキーマ（createCourseSchema）でチェックし、エラーは日本語で出す。
 "use client";
 
@@ -45,7 +45,7 @@ function toInput(formData: FormData) {
 }
 
 type Props = {
-  // 最初に入れておく値（空きマスから開いたときは、曜日と時限だけ）
+  // 最初に入れておく値（空きマスから開いたときは曜日と時限だけ、変更のときは科目のすべて）
   initial: Pick<CreateCourse, "dayOfWeek" | "period"> & Partial<CreateCourse>;
   periodTimes: PeriodTime[];
   submitLabel: string;
