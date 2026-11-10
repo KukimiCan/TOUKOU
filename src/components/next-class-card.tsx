@@ -2,7 +2,9 @@
 // ホームの「次の授業」カード。どこへ行けばいいか（建物・階数・教室）が一目で分かるようにする。
 // - 次の授業が今日：右上に開始までのカウントダウン、下に移動開始の目安（#62）を出す
 // - 次の授業が明日以降（#63）：「今日の授業はありません」を大きく出し、その下に次の授業を控えめに出す
-// 授業中の表示（#61）は後から足す。
+// - 授業中（#61）：左上を「授業中」にし、右上に終了までの残り時間を出す。移動開始の目安は出さない
+// - 授業が終わった後：「この授業は終わりました」と小さく出す（次の授業を出し直すのは API につなぐ #65）
+// ホームを開いたままでも、時刻に合わせて表示が自動で切り替わる。
 //
 // 「今日かどうか」と残り時間は端末の時刻で決めるので、ブラウザで動く部品（Client Component）にしている。
 "use client";
@@ -101,28 +103,49 @@ export function NextClassCard({ nextClass }: { nextClass: NextClass }) {
     );
   }
 
-  // 次の授業が今日
+  // 次の授業が今日。授業の前・授業中・終わった後で、見出しの行と 3 行目を変える
+  // （授業中は、移動開始の目安の「急ごう！」より「授業中」を優先する）
+  const phase =
+    now < new Date(startsAt).getTime()
+      ? "before"
+      : now < new Date(endsAt).getTime()
+        ? "inClass"
+        : "ended";
+  const heading = {
+    before: "次の授業",
+    inClass: "授業中",
+    ended: "この授業は終わりました",
+  }[phase];
+
   // 余白で情報のまとまりを表す（背景色や区切り線は使わない）
   // - 見出しの行（ラベルと残り時間）と本体の間は広く（20px）
   // - 科目名 → 場所・時限は 12px。場所と時限は同じ強さの 2 行として 6px でそろえる
   return (
     <section
-      aria-label="次の授業"
+      aria-label={heading}
       className="rounded-lg border border-current/20 px-5 pt-4 pb-5"
     >
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold opacity-70">次の授業</p>
-        <Countdown startsAt={startsAt} now={now} />
+      {/* 残り時間の数字が無いときも、見出しの行の高さをそろえる（min-h-8） */}
+      <div className="mb-5 flex min-h-8 items-center justify-between gap-3">
+        <p className="text-sm font-semibold opacity-70">{heading}</p>
+        {phase === "before" && (
+          <Countdown until={startsAt} now={now} label="開始まで" />
+        )}
+        {phase === "inClass" && (
+          <Countdown until={endsAt} now={now} label="終了まで" prefix="残り" />
+        )}
       </div>
 
       <h2 className="text-2xl leading-tight font-bold">{course.name}</h2>
 
       <dl className="mt-3 flex flex-col gap-1.5">{details}</dl>
 
-      {/* 3 行目：移動開始の目安（中央揃え・アイコンなし） */}
-      <div className="mt-4">
-        <LeaveTime leaveAt={leaveAt} now={now} />
-      </div>
+      {/* 3 行目：移動開始の目安（中央揃え・アイコンなし）。授業の前だけ出す */}
+      {phase === "before" && (
+        <div className="mt-4">
+          <LeaveTime leaveAt={leaveAt} now={now} />
+        </div>
+      )}
     </section>
   );
 }

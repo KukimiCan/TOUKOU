@@ -36,6 +36,22 @@ export const mockHomeResponseNoClass: HomeResponse = {
   freeTimeSuggestions: [],
 };
 
+// 授業中のとき（#61）
+// 「水曜 12:20 に開いた」想定。3 限（12:20〜13:50）が始まったところ。
+// 授業中は minutesUntilStart が 0、shouldLeaveNow が true（src/contracts/home.ts の約束）。
+export const mockHomeResponseInClass: HomeResponse = {
+  nextClass: {
+    course: mockCourses[1],
+    startsAt: "2026-11-04T12:20:00+09:00",
+    endsAt: "2026-11-04T13:50:00+09:00",
+    minutesUntilStart: 0,
+    leaveAt: "2026-11-04T12:10:00+09:00",
+    shouldLeaveNow: true,
+  },
+  reviews: [],
+  freeTimeSuggestions: [],
+};
+
 // 今日の授業がもう無いとき（#63）
 // 「日曜 9:00 に開いた」想定。次の授業は明日（月曜）の 1 限（9:00 開始）、移動の余裕時間は 10 分。
 // 残り時間をちょうど 24 時間にしているので、ホームの確認用のずらし（今から minutesUntilStart 分後に開始）でも、

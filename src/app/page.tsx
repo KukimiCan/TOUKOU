@@ -2,7 +2,8 @@
 // いまは仮データ（src/mocks/home.ts）で次の授業カードを表示する。API につなぐのは #65。
 // 仮データを mockHomeResponseTomorrow（次の授業が明日）や mockHomeResponseNoClass（授業が未登録）に
 // 差し替えると、授業が無い日の表示（#63）を確認できる。
-// 授業中の表示は #61、空きコマ提案と復習は #64 で足す。
+// mockHomeResponseInClass（授業中）に差し替えると、授業中の表示（#61）を確認できる。
+// 空きコマ提案と復習は #64 で足す。
 import { HealthStatus } from "@/components/health-status";
 import { NextClassCard } from "@/components/next-class-card";
 import { NoCourses } from "@/components/no-courses";
