@@ -35,3 +35,20 @@ export const mockHomeResponseNoClass: HomeResponse = {
   reviews: [],
   freeTimeSuggestions: [],
 };
+
+// 今日の授業がもう無いとき（#63）
+// 「日曜 9:00 に開いた」想定。次の授業は明日（月曜）の 1 限（9:00 開始）、移動の余裕時間は 10 分。
+// 残り時間をちょうど 24 時間にしているので、ホームの確認用のずらし（今から minutesUntilStart 分後に開始）でも、
+// いつ見ても「明日」の授業になる。
+export const mockHomeResponseTomorrow: HomeResponse = {
+  nextClass: {
+    course: mockCourses[0],
+    startsAt: "2026-11-09T09:00:00+09:00",
+    endsAt: "2026-11-09T10:30:00+09:00",
+    minutesUntilStart: 1440,
+    leaveAt: "2026-11-09T08:50:00+09:00",
+    shouldLeaveNow: false,
+  },
+  reviews: [],
+  freeTimeSuggestions: [],
+};
