@@ -3,7 +3,7 @@
 // 表示は h:mm:ss。上の桁が 0 のときは省く（1:05:09 → 29:59 → 5:09 → 9）。
 "use client";
 
-import { useEffect, useState } from "react";
+import { useClassClock } from "./use-class-clock";
 
 // 残りミリ秒 → "1:05:09" / "29:59" / "5:09" / "9"
 export function formatRemaining(ms: number): string {
@@ -20,18 +20,7 @@ export function formatRemaining(ms: number): string {
 
 export function Countdown({ startsAt }: { startsAt: string }) {
   // サーバーで描画するときは時刻が分からないので、画面に出てから数え始める（それまでは null）
-  const [now, setNow] = useState<number | null>(null);
-
-  useEffect(() => {
-    const tick = () => setNow(Date.now());
-    const first = setTimeout(tick, 0);
-    const timer = setInterval(tick, 1000);
-    return () => {
-      clearTimeout(first);
-      clearInterval(timer);
-    };
-  }, []);
-
+  const now = useClassClock();
   if (now === null) return null;
 
   const remaining = new Date(startsAt).getTime() - now;

@@ -1,12 +1,13 @@
 // front 担当のファイル（ホーム画面）。
 // いまは仮データ（src/mocks/home.ts）で次の授業カードを表示する。API につなぐのは #65。
-// 授業が無いときの表示は #63、残り時間は #61、移動開始の目安は #62、空きコマ提案と復習は #64 で足す。
+// 授業が無いときの表示は #63、授業中の表示は #61、空きコマ提案と復習は #64 で足す。
 import { HealthStatus } from "@/components/health-status";
 import { NextClassCard } from "@/components/next-class-card";
 import { mockHomeResponse } from "@/mocks/home";
 
 // 【一時的な処理。#65 で API の値に置き換えたら消す】
-// 仮データの開始時刻は過去の日付なので、カウントダウンを確認できるよう「今から 30 分後」に開始する形にずらす。
+// 仮データの開始時刻は過去の日付なので、カウントダウンと移動開始の目安を確認できるよう、
+// 「今から minutesUntilStart 分後（仮データでは 30 分後）」に開始する形に、開始・終了・移動開始の時刻を同じだけずらす。
 // Next.js は Date.now() の結果をページに入れるとき、こうした指定（"use cache"）を求める。
 // 結果は保存されるので、基準になる「今」はビルドした時刻（その後は既定の 15 分ごとに作り直される）。
 async function getPreviewNextClass() {
@@ -14,14 +15,17 @@ async function getPreviewNextClass() {
   const { nextClass } = mockHomeResponse;
   if (!nextClass) return null;
 
-  const start = Date.now() + 30 * 60_000;
-  const length =
-    new Date(nextClass.endsAt).getTime() -
+  const shift =
+    Date.now() +
+    nextClass.minutesUntilStart * 60_000 -
     new Date(nextClass.startsAt).getTime();
+  const shifted = (time: string) =>
+    new Date(new Date(time).getTime() + shift).toISOString();
   return {
     ...nextClass,
-    startsAt: new Date(start).toISOString(),
-    endsAt: new Date(start + length).toISOString(),
+    startsAt: shifted(nextClass.startsAt),
+    endsAt: shifted(nextClass.endsAt),
+    leaveAt: shifted(nextClass.leaveAt),
   };
 }
 

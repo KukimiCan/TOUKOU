@@ -1,10 +1,11 @@
 // front 担当のファイル。
 // ホームの「次の授業」カード。どこへ行けばいいか（建物・階数・教室）が一目で分かるようにする。
-// 右上に開始までのカウントダウンを出す。授業中の表示（#61）と移動開始の目安（#62）は後から足す。
+// 右上に開始までのカウントダウン、下に移動開始の目安（#62）を出す。授業中の表示（#61）は後から足す。
 import type { DayOfWeek } from "@/contracts/courses";
 import type { NextClass } from "@/contracts/home";
 
 import { Countdown } from "./countdown";
+import { LeaveTime } from "./leave-time";
 
 const DAY_LABELS: Record<DayOfWeek, string> = {
   mon: "月",
@@ -25,7 +26,7 @@ const timeFormat = new Intl.DateTimeFormat("ja-JP", {
 });
 
 export function NextClassCard({ nextClass }: { nextClass: NextClass }) {
-  const { course, startsAt, endsAt } = nextClass;
+  const { course, startsAt, endsAt, leaveAt, shouldLeaveNow } = nextClass;
   const place = [course.building, course.floor, course.room]
     .filter(Boolean)
     .join(" ");
@@ -58,6 +59,11 @@ export function NextClassCard({ nextClass }: { nextClass: NextClass }) {
           {timeFormat.format(new Date(endsAt))}
         </InfoRow>
       </dl>
+
+      {/* 3 行目：移動開始の目安（中央揃え・アイコンなし） */}
+      <div className="mt-4">
+        <LeaveTime leaveAt={leaveAt} shouldLeaveNow={shouldLeaveNow} />
+      </div>
     </section>
   );
 }
