@@ -1,23 +1,118 @@
 // front 担当のファイル。
 // 時間割画面の中身。週の表（timetable-editor.tsx）と、時間割の設定の欄（#58）をまとめる。
-// 設定はここで持ち、保存したら表の左の時刻と、科目フォームの時限の選択肢にすぐ反映する。
-// いまは画面の中だけで設定を持つ（再読み込みすると初期値に戻る）。API につなぐのは #59。
+// - 開いたときに、科目（GET /api/courses）と設定（GET /api/settings）を API から読み込む（#59）
+// - 読み込み中・読み込めなかったとき・ログインしていないときは、それぞれの表示を出す
+// - 設定は保存（PATCH /api/settings）できたら、表の左の時刻と、科目フォームの時限の選択肢にすぐ反映する
 "use client";
 
-import { useRef, useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
-import type { Course } from "@/contracts/courses";
-import type { Settings } from "@/contracts/settings";
+import { type Course, coursesResponseSchema } from "@/contracts/courses";
+import { type Settings, settingsResponseSchema } from "@/contracts/settings";
 
+import { ApiError, errorMessage, fetchApi } from "./fetch-api";
 import { SettingsForm } from "./settings-form";
 import { TimetableEditor } from "./timetable-editor";
 
-type Props = {
+// 画面を開いたときの読み込みの状態
+type Load =
+  | { status: "loading" }
+  | { status: "error"; error: unknown }
+  | { status: "ready"; courses: Course[]; settings: Settings };
+
+// 科目と設定を同時に読み込む
+async function loadTimetable() {
+  const [coursesRes, settingsRes] = await Promise.all([
+    fetchApi("/api/courses"),
+    fetchApi("/api/settings"),
+  ]);
+  const { courses } = coursesResponseSchema.parse(await coursesRes.json());
+  const settings = settingsResponseSchema.parse(await settingsRes.json());
+  return { courses, settings };
+}
+
+export function TimetableScreen() {
+  const [load, setLoad] = useState<Load>({ status: "loading" });
+  // 「もう一度読み込む」を押した回数。変わるたびに読み込み直す
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    // 読み込みの途中で画面を離れたら、結果を使わない
+    let ignore = false;
+    loadTimetable()
+      .then((data) => {
+        if (!ignore) setLoad({ status: "ready", ...data });
+      })
+      .catch((error: unknown) => {
+        if (!ignore) setLoad({ status: "error", error });
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [attempt]);
+
+  function retry() {
+    setLoad({ status: "loading" });
+    setAttempt((n) => n + 1);
+  }
+
+  if (load.status === "loading") {
+    return (
+      <p role="status" className="py-12 text-center text-sm opacity-70">
+        時間割を読み込んでいます…
+      </p>
+    );
+  }
+
+  if (load.status === "error") {
+    // ログインしていないときは、読み込み直しても同じなので、ログインへの案内を出す
+    if (load.error instanceof ApiError && load.error.status === 401) {
+      return (
+        <div className="flex flex-col items-center gap-4 py-12 text-center">
+          <p>ログインすると、時間割を登録・確認できます。</p>
+          <Link
+            href="/login"
+            className="bg-foreground text-background rounded px-6 py-3 font-semibold"
+          >
+            ログインする
+          </Link>
+        </div>
+      );
+    }
+    return (
+      <div className="flex flex-col items-center gap-4 py-12 text-center">
+        <div role="alert" className="flex flex-col gap-1">
+          <p className="font-semibold">時間割を読み込めませんでした</p>
+          <p className="text-sm opacity-70">{errorMessage(load.error)}</p>
+        </div>
+        <button
+          type="button"
+          onClick={retry}
+          className="rounded border border-current/30 px-6 py-3 font-semibold"
+        >
+          もう一度読み込む
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <TimetableContent
+      initialCourses={load.courses}
+      initialSettings={load.settings}
+    />
+  );
+}
+
+// 読み込めたあとの画面（週の表と設定の欄）
+function TimetableContent({
+  initialCourses,
+  initialSettings,
+}: {
   initialCourses: Course[];
   initialSettings: Settings;
-};
-
-export function TimetableScreen({ initialCourses, initialSettings }: Props) {
+}) {
   const [settings, setSettings] = useState(initialSettings);
   // 開くたびにフォームをいまの設定に戻すための番号
   const [opened, setOpened] = useState(0);
@@ -33,9 +128,19 @@ export function TimetableScreen({ initialCourses, initialSettings }: Props) {
     dialogRef.current?.close();
   }
 
-  function save(next: Settings) {
-    setSettings(next);
-    close();
+  // 設定を API に保存する。保存できなかったときは、フォームに出すメッセージを返す
+  async function save(next: Settings): Promise<string | null> {
+    try {
+      const res = await fetchApi("/api/settings", {
+        method: "PATCH",
+        body: next,
+      });
+      setSettings(settingsResponseSchema.parse(await res.json()));
+      close();
+      return null;
+    } catch (error) {
+      return `保存できませんでした。${errorMessage(error)}`;
+    }
   }
 
   const periods = [...settings.periods].sort((a, b) => a.period - b.period);

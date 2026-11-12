@@ -2,6 +2,7 @@
 // 科目の入力フォーム（曜日・時限・科目名・建物・階数・教室）。
 // 登録（#56）と変更（#57）で使い回す。最初の値と「送ったときの処理」を外から受け取る。
 // 入力は contracts の zod スキーマ（createCourseSchema）でチェックし、エラーは日本語で出す。
+// 送っている間はボタンを押せないようにする（API に送るのを待つため。#59）。
 "use client";
 
 import { useState } from "react";
@@ -49,8 +50,8 @@ type Props = {
   initial: Pick<CreateCourse, "dayOfWeek" | "period"> & Partial<CreateCourse>;
   periodTimes: PeriodTime[];
   submitLabel: string;
-  // 送ったときの処理。登録できなかったときは、画面に出すメッセージを返す（重複など）
-  onSubmit: (input: CreateCourse) => string | null;
+  // 送ったときの処理（API に送る）。登録できなかったときは、画面に出すメッセージを返す（重複、通信の失敗など）
+  onSubmit: (input: CreateCourse) => Promise<string | null>;
 };
 
 export function CourseForm({
@@ -61,9 +62,12 @@ export function CourseForm({
 }: Props) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
+  // 送っている間は true（ボタンを押せないようにする）
+  const [pending, setPending] = useState(false);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     const parsed = createCourseSchema.safeParse(
       toInput(new FormData(event.currentTarget)),
     );
@@ -88,7 +92,10 @@ export function CourseForm({
     }
 
     setErrors({});
-    setFormError(onSubmit(parsed.data));
+    setFormError(null);
+    setPending(true);
+    setFormError(await onSubmit(parsed.data));
+    setPending(false);
   }
 
   const periodLabel = (period: number) => {
@@ -178,9 +185,10 @@ export function CourseForm({
 
       <button
         type="submit"
-        className="bg-foreground text-background rounded px-4 py-3 font-semibold"
+        disabled={pending}
+        className="bg-foreground text-background rounded px-4 py-3 font-semibold disabled:opacity-50"
       >
-        {submitLabel}
+        {pending ? "保存しています…" : submitLabel}
       </button>
     </form>
   );

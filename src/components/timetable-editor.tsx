@@ -4,15 +4,23 @@
 // - 科目のマスを押すと、その科目が入った状態で変更フォームが開く。シートの下から削除もできる（#57）
 // - 削除は、シートの中で「削除しますか？」と確認してから行う
 // - 同じ曜日・時限に別の科目があるときは登録・変更しない（週の表は 1 マスに 1 つしか出せないため）
-// - いまは画面の中だけで科目を持つ（再読み込みすると消える）。API につなぐのは #59
+// - 登録・変更・削除は API（/api/courses）に送り、成功したら表に反映する（#59）
+// - 送っている間はボタンを押せないようにし、失敗したらシートの中にメッセージを出す
 "use client";
 
 import { useRef, useState } from "react";
 
-import type { Course, CreateCourse, DayOfWeek } from "@/contracts/courses";
+import {
+  type Course,
+  type CreateCourse,
+  courseResponseSchema,
+  type DayOfWeek,
+  type UpdateCourse,
+} from "@/contracts/courses";
 import type { PeriodTime } from "@/contracts/settings";
 
 import { CourseForm } from "./course-form";
+import { ApiError, errorMessage, fetchApi } from "./fetch-api";
 import { DAY_LABELS, TimetableGrid } from "./timetable-grid";
 
 type Props = {
@@ -36,6 +44,9 @@ type Sheet =
 export function TimetableEditor({ initialCourses, periodTimes }: Props) {
   const [courses, setCourses] = useState(initialCourses);
   const [sheet, setSheet] = useState<Sheet | null>(null);
+  // 削除を送っている間は true / 削除できなかったときのメッセージ
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   // <dialog> は、HTML の標準の「画面の上に重ねて出す箱」。showModal() で開き、close() で閉じる
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -50,6 +61,7 @@ export function TimetableEditor({ initialCourses, periodTimes }: Props) {
   }
 
   function openEdit(course: Course) {
+    setDeleteError(null);
     setSheet((prev) => ({
       mode: "edit",
       course,
@@ -65,6 +77,7 @@ export function TimetableEditor({ initialCourses, periodTimes }: Props) {
 
   // 削除の確認を出す / やめて変更の画面に戻る
   function setConfirmingDelete(confirmingDelete: boolean) {
+    setDeleteError(null);
     setSheet((prev) =>
       prev?.mode === "edit" ? { ...prev, confirmingDelete } : prev,
     );
@@ -84,27 +97,70 @@ export function TimetableEditor({ initialCourses, periodTimes }: Props) {
     return `${DAY_LABELS[input.dayOfWeek]}${input.period} には「${taken.name}」があります。別の曜日・時限を選んでください。`;
   }
 
-  function addCourse(input: CreateCourse): string | null {
+  async function addCourse(input: CreateCourse): Promise<string | null> {
     const taken = findTaken(input);
     if (taken) return takenMessage(input, taken);
 
-    setCourses((prev) => [...prev, { ...input, id: crypto.randomUUID() }]);
-    close();
-    return null;
+    try {
+      const res = await fetchApi("/api/courses", {
+        method: "POST",
+        body: input,
+      });
+      // id は API（DB）が決めるので、返ってきた科目を表に足す
+      const { course } = courseResponseSchema.parse(await res.json());
+      setCourses((prev) => [...prev, course]);
+      close();
+      return null;
+    } catch (error) {
+      return `登録できませんでした。${errorMessage(error)}`;
+    }
   }
 
-  function updateCourse(id: string, input: CreateCourse): string | null {
+  async function updateCourse(
+    id: string,
+    input: CreateCourse,
+  ): Promise<string | null> {
     const taken = findTaken(input, id);
     if (taken) return takenMessage(input, taken);
 
-    // 任意の項目を空にしたときは消えるよう、id 以外は入力で置き換える
-    setCourses((prev) => prev.map((c) => (c.id === id ? { ...input, id } : c)));
-    close();
-    return null;
+    // PATCH は「送った項目だけ変える」決まり。任意の項目を空にしたときも消えるよう、空なら "" を送る
+    const patch: UpdateCourse = {
+      ...input,
+      building: input.building ?? "",
+      floor: input.floor ?? "",
+      room: input.room ?? "",
+    };
+
+    try {
+      const res = await fetchApi(`/api/courses/${id}`, {
+        method: "PATCH",
+        body: patch,
+      });
+      const { course } = courseResponseSchema.parse(await res.json());
+      setCourses((prev) => prev.map((c) => (c.id === id ? course : c)));
+      close();
+      return null;
+    } catch (error) {
+      return `保存できませんでした。${errorMessage(error)}`;
+    }
   }
 
-  function deleteCourse(id: string) {
+  async function deleteCourse(id: string) {
+    if (deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await fetchApi(`/api/courses/${id}`, { method: "DELETE" });
+    } catch (error) {
+      // 404 は「もう無い」ということなので、削除できたのと同じに扱う
+      if (!(error instanceof ApiError && error.status === 404)) {
+        setDeleteError(`削除できませんでした。${errorMessage(error)}`);
+        setDeleting(false);
+        return;
+      }
+    }
     setCourses((prev) => prev.filter((c) => c.id !== id));
+    setDeleting(false);
     close();
   }
 
@@ -185,17 +241,27 @@ export function TimetableEditor({ initialCourses, periodTimes }: Props) {
                 <p className="text-sm opacity-70">
                   時間割から消えます。元に戻せません。
                 </p>
+                {deleteError && (
+                  <p
+                    role="alert"
+                    className="text-sm text-red-600 dark:text-red-400"
+                  >
+                    {deleteError}
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={() => deleteCourse(sheet.course.id)}
-                  className="mt-2 rounded bg-red-600 px-4 py-3 font-semibold text-white dark:bg-red-500"
+                  disabled={deleting}
+                  className="mt-2 rounded bg-red-600 px-4 py-3 font-semibold text-white disabled:opacity-50 dark:bg-red-500"
                 >
-                  削除する
+                  {deleting ? "削除しています…" : "削除する"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmingDelete(false)}
-                  className="rounded border border-current/30 px-4 py-3 font-semibold"
+                  disabled={deleting}
+                  className="rounded border border-current/30 px-4 py-3 font-semibold disabled:opacity-50"
                 >
                   やめる
                 </button>

@@ -2,6 +2,7 @@
 // 時間割の設定の入力フォーム（移動の余裕時間と、1〜8 限の開始・終了時刻）（#58）。
 // 時限の数は 1〜8 限で固定にする（科目のフォームがいつも 1〜8 限を選べるのとそろえるため）。
 // 入力は contracts の zod スキーマ（settingsSchema）でチェックし、エラーは日本語で出す。
+// 保存している間はボタンを押せないようにし、保存できなかったときはメッセージを出す（#59）。
 "use client";
 
 import { useState } from "react";
@@ -21,16 +22,21 @@ const NO_ERRORS: Errors = { periods: {} };
 type Props = {
   // 最初に入れておく値（いまの設定）
   initial: Settings;
-  // 入力が正しいときに呼ぶ
-  onSubmit: (settings: Settings) => void;
+  // 入力が正しいときに呼ぶ（API に保存する）。保存できなかったときは、画面に出すメッセージを返す
+  onSubmit: (settings: Settings) => Promise<string | null>;
 };
 
 export function SettingsForm({ initial, onSubmit }: Props) {
   const [errors, setErrors] = useState<Errors>(NO_ERRORS);
+  // 保存できなかったときのメッセージ
+  const [saveError, setSaveError] = useState<string | null>(null);
+  // 保存している間は true（ボタンを押せないようにする）
+  const [pending, setPending] = useState(false);
   const periods = [...initial.periods].sort((a, b) => a.period - b.period);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     const formData = new FormData(event.currentTarget);
     const text = (key: string) => String(formData.get(key) ?? "").trim();
     // 空欄は 0 ではなく「数字ではない」として扱い、エラーにする
@@ -63,11 +69,15 @@ export function SettingsForm({ initial, onSubmit }: Props) {
         }
       }
       setErrors(next);
+      setSaveError(null);
       return;
     }
 
     setErrors(NO_ERRORS);
-    onSubmit(parsed.data);
+    setSaveError(null);
+    setPending(true);
+    setSaveError(await onSubmit(parsed.data));
+    setPending(false);
   }
 
   return (
@@ -133,12 +143,18 @@ export function SettingsForm({ initial, onSubmit }: Props) {
           {errors.form}
         </p>
       )}
+      {saveError && (
+        <p role="alert" className={errorClass}>
+          {saveError}
+        </p>
+      )}
 
       <button
         type="submit"
-        className="bg-foreground text-background rounded px-4 py-3 font-semibold"
+        disabled={pending}
+        className="bg-foreground text-background rounded px-4 py-3 font-semibold disabled:opacity-50"
       >
-        保存する
+        {pending ? "保存しています…" : "保存する"}
       </button>
     </form>
   );
