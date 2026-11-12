@@ -12,16 +12,20 @@ import {
 const questionOutputSchema = z.object({
   questions: z
     .array(
-      generatedQuestionSchema.safeExtend({
-        evidence: z
-          .string()
-          .trim()
-          .min(1)
-          .describe("正解を支える資料からの引用"),
+      z.object({
+        prompt: z.string(),
+        choices: z.array(z.string()),
+        answerIndex: z.number(),
+        explanation: z.string(),
+        evidence: z.string().describe("正解を支える資料からの引用"),
       }),
     )
     .max(3),
 });
+
+function normalizeCitation(text: string): string {
+  return text.normalize("NFKC").replace(/\s+/g, "");
+}
 
 // 資料の本文や板書の解説から確認問題を生成する。資料との紐づけは呼び出し元で行う。
 export async function generateQuestions(
@@ -39,7 +43,12 @@ export async function generateQuestions(
     output: Output.object({ schema: questionOutputSchema }),
   });
 
-  return output.questions.flatMap(({ evidence, ...question }) =>
-    source.includes(evidence) ? [question] : [],
-  );
+  const normalizedSource = normalizeCitation(source);
+  return output.questions.flatMap(({ evidence, ...question }) => {
+    const citation = normalizeCitation(evidence);
+    if (!citation || !normalizedSource.includes(citation)) return [];
+
+    const parsed = generatedQuestionSchema.safeParse(question);
+    return parsed.success ? [parsed.data] : [];
+  });
 }
