@@ -66,6 +66,11 @@ export async function explainBoard(image: Uint8Array): Promise<Explanation> {
   const disputed = reading.formulas
     .filter(({ formula }) => !secondKeys.has(formulaKey(formula)))
     .map(({ position }) => `${position}。数式の読み取りが一致しませんでした。`);
+  const explanationOnly = output.formulas.flatMap(({ formula }, index) =>
+    firstKeys.has(formulaKey(formula))
+      ? []
+      : [`解説側の数式候補 ${index + 1}。数式の読み取りが一致しませんでした。`],
+  );
   const formulas = output.formulas.filter(({ formula }) =>
     firstKeys.has(formulaKey(formula)),
   );
@@ -76,6 +81,7 @@ export async function explainBoard(image: Uint8Array): Promise<Explanation> {
           `${position}。判読できませんでした（${reason}）。`,
       ),
       ...disputed,
+      ...explanationOnly,
     ]),
   ];
 
@@ -83,19 +89,14 @@ export async function explainBoard(image: Uint8Array): Promise<Explanation> {
   const tooManyUnclearRegions =
     reading.unreadable.length >= 2 &&
     reading.unreadable.length >= reading.formulas.length;
-  const noAgreedFormulas =
-    formulas.length === 0 && (firstKeys.size > 0 || secondKeys.size > 0);
-  if (tooManyUnclearRegions || noAgreedFormulas) {
+  if (tooManyUnclearRegions) {
     return {
       summary:
         "数式を確実に読み取れませんでした。板書を近くから撮り直してください。",
       terms: [],
       formulas: [],
       omissions: [],
-      unreadable:
-        unreadable.length > 0
-          ? unreadable
-          : ["板書の数式。読み取りが一致しませんでした。"],
+      unreadable,
     };
   }
 
