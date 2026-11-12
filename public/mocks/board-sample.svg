@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
+  <!-- 仮データ用の架空の板書（資料詳細 /materials/[id] の見た目を確かめるためのもの） -->
+  <rect width="1200" height="800" fill="#7a5a3a"/>
+  <rect x="24" y="24" width="1152" height="752" fill="#24493a"/>
+  <g fill="#f4f1e8" font-family="'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif">
+    <text x="80" y="120" font-size="56">§3 微分の定義</text>
+    <line x1="80" y1="140" x2="420" y2="140" stroke="#f4f1e8" stroke-width="4"/>
+    <text x="80" y="240" font-size="44">平均変化率</text>
+    <text x="140" y="320" font-size="48">Δy / Δx = ( f(x+h) − f(x) ) / h</text>
+    <text x="80" y="440" font-size="44">導関数</text>
+    <text x="140" y="530" font-size="52">f′(x) = lim   ( f(x+h) − f(x) ) / h</text>
+    <text x="330" y="580" font-size="30">h→0</text>
+    <text x="80" y="690" font-size="40" fill="#f7d774">※ h ≠ 0 のまま 0 に近づける</text>
+  </g>
+  <g fill="#f4f1e8" opacity="0.5">
+    <rect x="960" y="740" width="70" height="16" rx="6"/>
+    <rect x="1050" y="740" width="50" height="16" rx="6" fill="#f7d774"/>
+  </g>
+</svg>
