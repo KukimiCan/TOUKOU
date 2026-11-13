@@ -4,30 +4,32 @@
 // - 「公開済み」「未公開」をバッジで見分けられる
 // - 「公開する」を押すと、何が公開されるかを説明する確認を挟んでから公開する
 // - 公開済みの問題には、共有 URL をコピーするボタンを出す（#71）
-// - 公開はいまは仮の動き（少し待って共有 ID を作る）。API（POST /api/questions/[id]/publish）につなぐのは別の issue
+// - 公開は API（POST /api/questions/[id]/publish）を呼ぶ（#156）。失敗したら理由を出し、もう一度押せるようにする
 "use client";
 
 import Link from "next/link";
 import { useState } from "react";
 
-import type { Question } from "@/contracts/questions";
+import {
+  type Question,
+  publishQuestionResponseSchema,
+} from "@/contracts/questions";
 
 import { CopyShareUrl } from "./copy-share-url";
+import { errorMessage, fetchApi } from "./fetch-api";
 import { CHOICE_LABELS } from "./question-format";
 
 type Props = {
   questions: Question[];
 };
 
-// 【仮の動き。API につなぐときに置き換える】公開を待つ代わりに、少し待って推測されにくい共有 ID を作る。
-// スマホから http で開いたときも動くよう、crypto.randomUUID ではなく crypto.getRandomValues を使う
-async function publish(): Promise<{ shareId: string }> {
-  await new Promise((resolve) => setTimeout(resolve, 800));
-  const bytes = crypto.getRandomValues(new Uint8Array(12));
-  const shareId = Array.from(bytes, (b) => b.toString(16).padStart(2, "0"))
-    .join("")
-    .slice(0, 22);
-  return { shareId };
+// 問題を公開して、共有 URL に使う ID（shareId）を受け取る。何度押しても同じ ID が返る
+async function publish(id: string): Promise<{ shareId: string }> {
+  const res = await fetchApi(
+    `/api/questions/${encodeURIComponent(id)}/publish`,
+    { method: "POST" },
+  );
+  return publishQuestionResponseSchema.parse(await res.json());
 }
 
 export function QuestionReviewList({ questions: initial }: Props) {
@@ -81,14 +83,22 @@ function QuestionCard({
   // 確認の表示を出しているか
   const [confirming, setConfirming] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  // 公開に失敗したときに出す文（失敗していなければ null）
+  const [error, setError] = useState<string | null>(null);
 
   async function handlePublish() {
     if (publishing) return;
     setPublishing(true);
-    const { shareId } = await publish();
-    setPublishing(false);
-    setConfirming(false);
-    onPublished(shareId);
+    setError(null);
+    try {
+      const { shareId } = await publish(question.id);
+      setConfirming(false);
+      onPublished(shareId);
+    } catch (e) {
+      setError(`公開できませんでした。${errorMessage(e)}`);
+    } finally {
+      setPublishing(false);
+    }
   }
 
   return (
@@ -158,6 +168,11 @@ function QuestionCard({
             公開すると、URL
             を知っている人は誰でも、この問題文・選択肢・解説を見られます。元の板書画像は公開されません。
           </p>
+          {error && (
+            <p role="alert" className="text-sm font-semibold">
+              {error}
+            </p>
+          )}
           <div className="flex gap-2">
             <button
               type="button"
@@ -169,7 +184,10 @@ function QuestionCard({
             </button>
             <button
               type="button"
-              onClick={() => setConfirming(false)}
+              onClick={() => {
+                setConfirming(false);
+                setError(null);
+              }}
               disabled={publishing}
               className="rounded border border-current/30 px-4 py-3 disabled:opacity-50"
             >
