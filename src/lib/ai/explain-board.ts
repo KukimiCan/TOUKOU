@@ -109,9 +109,15 @@ export async function explainBoard(image: Uint8Array): Promise<Explanation> {
             ],
       ),
     );
-    formulas = output.formulas.filter(({ formula }) =>
+    const matched = output.formulas.filter(({ formula }) =>
       firstKeys.has(formulaKey(formula)),
     );
+    // 1 つも一致しないときは、照合ができていないのと同じ。解説の数式は残し、確認が必要と注記する
+    if (matched.length === 0 && output.formulas.length > 0) {
+      notes.push("数式の照合が一致しなかったため、数式は確認が必要です。");
+    } else {
+      formulas = matched;
+    }
   }
 
   const readingUnreadable = reading?.unreadable ?? [];
