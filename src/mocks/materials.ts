@@ -1,5 +1,5 @@
 // 仮データ（架空）。形は src/contracts/materials.ts に合わせる。
-// courseId は src/mocks/courses.ts の「微分積分学（仮）」と同じ ID。
+// courseId は src/mocks/courses.ts の「微分積分学（仮）」と同じ ID。解説と問題（微分の内容）と科目を合わせる。
 // 解説の中身は AI 担当の仮データ（src/lib/ai/mocks/explanation.ts）を使う。
 import type {
   GenerateMaterialResponse,
