@@ -4,7 +4,7 @@
 //    （capture を付けた入力欄はカメラしか開かないので、写真を選ぶ用の入力欄を別に置く）
 // 2. 送る前に縮小した画像をプレビューし、科目を選ぶ
 // 3. 「アップロードする」を押すと、送っている間は「アップロードしています…」と出し、終わったら資料の詳細へ移る
-// いまは仮の動き（少し待って仮データの資料へ移る）。API（POST /api/materials）につなぐのは #69。
+// 画像は API（POST /api/materials）に送る（#69）。
 "use client";
 
 import Link from "next/link";
@@ -14,10 +14,11 @@ import { useEffect, useState } from "react";
 import type { Course } from "@/contracts/courses";
 import {
   type MaterialResponse,
+  materialResponseSchema,
   uploadMaterialFieldsSchema,
 } from "@/contracts/materials";
-import { mockMaterials } from "@/mocks/materials";
 
+import { errorMessage, fetchApi } from "./fetch-api";
 import { ImageError, resizeImage } from "./resize-image";
 
 type Props = {
@@ -25,12 +26,10 @@ type Props = {
   courses: Course[];
 };
 
-// 【仮の動き。#69 で fetch("/api/materials", { method: "POST", body }) に置き換える】
-// 送る中身（FormData）は API と同じ形で作っておく。仮データの「解説がまだの板書」を返す
+// 画像と項目（file / courseId / kind）を FormData で送り、追加された資料を受け取る
 async function upload(body: FormData): Promise<MaterialResponse> {
-  void body;
-  await new Promise((resolve) => setTimeout(resolve, 1500));
-  return { material: mockMaterials[1] };
+  const res = await fetchApi("/api/materials", { method: "POST", body });
+  return materialResponseSchema.parse(await res.json());
 }
 
 // 選んだ画像（縮小したもの）と、プレビュー用の URL
@@ -101,10 +100,8 @@ export function BoardUpload({ courses }: Props) {
       const { material } = await upload(body);
       router.push(`/materials/${material.id}`);
       // 移るまでの間も「アップロードしています…」のままにする
-    } catch {
-      setError(
-        "アップロードできませんでした。少し時間をおいて、もう一度試してください。",
-      );
+    } catch (e) {
+      setError(`アップロードできませんでした。${errorMessage(e)}`);
       setUploading(false);
     }
   }

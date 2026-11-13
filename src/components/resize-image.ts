@@ -31,11 +31,9 @@ function loadImage(file: File): Promise<HTMLImageElement> {
   });
 }
 
+// 形式（file.type）は先に確かめない。HEIC などは file.type が空のことがあり、
+// 「画像を選んでください」と出ると原因が分かりにくいため。読み込めなければ loadImage が形式を案内する
 export async function resizeImage(file: File): Promise<File> {
-  if (!file.type.startsWith("image/")) {
-    throw new ImageError("画像のファイルを選んでください。");
-  }
-
   const image = await loadImage(file);
   const scale = Math.min(
     1,

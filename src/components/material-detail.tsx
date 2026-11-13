@@ -2,19 +2,19 @@
 // 資料詳細の中身（#68）。上に元の画像、その下に AI の解説を並べる。
 // - 元の画像は押すと別のタブで大きく開ける（スマホでは指で拡大できる）
 // - 解説の前に「AI の解説は間違うことがあります」と出し、元の画像へ戻るリンクも付ける
-// - 解説がまだの資料には「解説と確認問題を作る」ボタンを出す。いまは仮の動き（少し待って仮データを出す）。
-//   API（POST /api/materials/[id]/generate）につなぐのは #69
+// - 解説がまだの資料には「解説と確認問題を作る」ボタンを出す。押すと API（POST /api/materials/[id]/generate）で作る（#69）
 "use client";
 
 import { useState } from "react";
 
-import type {
-  GenerateMaterialResponse,
-  MaterialDetailResponse,
+import {
+  type GenerateMaterialResponse,
+  generateMaterialResponseSchema,
+  type MaterialDetailResponse,
 } from "@/contracts/materials";
-import { mockGenerateMaterialResponse } from "@/mocks/materials";
 
 import { type Explanation, ExplanationView } from "./explanation-view";
+import { errorMessage, fetchApi } from "./fetch-api";
 import { formatCreatedAt, MATERIAL_KIND_LABELS } from "./material-format";
 
 type Props = {
@@ -22,10 +22,13 @@ type Props = {
   courseName: string;
 };
 
-// 【仮の動き。#69 で API に置き換える】AI が作るのを待つ代わりに、少し待って仮データを返す
-async function generate(): Promise<GenerateMaterialResponse> {
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-  return mockGenerateMaterialResponse;
+// AI に解説と確認問題を作ってもらう。AI の返事を待つので、少し時間がかかる
+async function generate(materialId: string): Promise<GenerateMaterialResponse> {
+  const res = await fetchApi(
+    `/api/materials/${encodeURIComponent(materialId)}/generate`,
+    { method: "POST" },
+  );
+  return generateMaterialResponseSchema.parse(await res.json());
 }
 
 export function MaterialDetail({ detail, courseName }: Props) {
@@ -36,14 +39,22 @@ export function MaterialDetail({ detail, courseName }: Props) {
   const [generating, setGenerating] = useState(false);
   // 作った確認問題の数（作ったときだけ出す）
   const [questionCount, setQuestionCount] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleGenerate() {
     if (generating) return;
     setGenerating(true);
-    const result = await generate();
-    setExplanation(result.explanation);
-    setQuestionCount(result.questionCount);
-    setGenerating(false);
+    setError(null);
+    // 失敗しても「作っています…」のまま止まらないよう、最後に必ず戻す
+    try {
+      const result = await generate(material.id);
+      setExplanation(result.explanation);
+      setQuestionCount(result.questionCount);
+    } catch (e) {
+      setError(`解説を作れませんでした。${errorMessage(e)}`);
+    } finally {
+      setGenerating(false);
+    }
   }
 
   return (
@@ -96,8 +107,9 @@ export function MaterialDetail({ detail, courseName }: Props) {
         ) : (
           <div className="flex flex-col gap-3 rounded border border-current/20 p-4">
             <p className="text-sm leading-relaxed">
-              この資料の解説はまだありません。AI
-              に、解説（要約・用語・数式など）と確認問題を作ってもらえます。
+              {
+                "この資料の解説はまだありません。AIに、解説（要約・用語・数式など）と確認問題を作ってもらえます。"
+              }
             </p>
             <button
               type="button"
@@ -110,6 +122,14 @@ export function MaterialDetail({ detail, courseName }: Props) {
             {generating && (
               <p role="status" className="text-center text-xs opacity-70">
                 少し時間がかかります。このままお待ちください。
+              </p>
+            )}
+            {error && (
+              <p
+                role="alert"
+                className="text-sm text-red-600 dark:text-red-400"
+              >
+                {error}
               </p>
             )}
           </div>
