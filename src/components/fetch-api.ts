@@ -1,6 +1,6 @@
 // front 担当のファイル。
 // 画面から API（/api/...）を呼ぶための小さな道具。
-// - 送る中身（body）は JSON にして送る
+// - 送る中身（body）は JSON にして送る。画像などのファイルを送るとき（FormData）は、そのまま送る
 // - 失敗したとき（通信できない、ログインしていない、など）は ApiError を投げる。
 //   message は「次にどうすればよいか」の日本語。画面では「保存できませんでした。」などの後ろに続けて出す
 // - 受け取ったデータの形のチェックは、呼ぶ側で contracts の zod スキーマを使って行う
@@ -33,9 +33,20 @@ function messageFor(status: number) {
 
 type Options = {
   method?: "GET" | "POST" | "PATCH" | "DELETE";
-  // 送るデータ（JSON にして送る）
+  // 送るデータ（JSON にして送る。FormData はそのまま送る）
   body?: unknown;
 };
+
+// 送る中身と、その形式を伝えるヘッダーを作る。
+// FormData のときは、ブラウザが形式（multipart/form-data）と区切りの文字を自分で付けるので、ヘッダーは付けない
+function toRequestBody(body: unknown) {
+  if (body === undefined) return {};
+  if (body instanceof FormData) return { body };
+  return {
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  };
+}
 
 // API を呼び、成功したら Response を返す。失敗したら ApiError を投げる
 export async function fetchApi(
@@ -44,12 +55,7 @@ export async function fetchApi(
 ): Promise<Response> {
   let res: Response;
   try {
-    res = await fetch(url, {
-      method,
-      headers:
-        body === undefined ? undefined : { "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+    res = await fetch(url, { method, ...toRequestBody(body) });
   } catch {
     throw new ApiError(0, messageFor(0));
   }

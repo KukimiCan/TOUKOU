@@ -1,17 +1,12 @@
 // front 担当のファイル（資料詳細の画面）。
-// 元の画像と AI の解説を並べて表示する（#68）。いまは仮データ（src/mocks/materials-preview.ts）を使う。
-// API（/api/materials/[id]）につなぐのは #69。
+// 元の画像と AI の解説を並べて表示する（#68）。資料は API（/api/materials/[id]）から読み込む（#69）。
+// 読み込みは material-detail-screen.tsx（ブラウザで動く部品）が行う。
 // URL の [id] は、開いたときに初めて分かる値なので、読み込み中の表示（Suspense）の中で読む（Next.js の決まり）。
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { MaterialDetail } from "@/components/material-detail";
-import {
-  mockPreviewCourses,
-  mockPreviewMaterialDetail,
-} from "@/mocks/materials-preview";
+import { MaterialDetailScreen } from "@/components/material-detail-screen";
 
 export const metadata: Metadata = {
   title: "資料 | TOUKOU",
@@ -40,12 +35,5 @@ async function MaterialContent({
   params,
 }: Pick<PageProps<"/materials/[id]">, "params">) {
   const { id } = await params;
-  const detail = mockPreviewMaterialDetail(id);
-  if (!detail) notFound();
-
-  const courseName =
-    mockPreviewCourses.find((c) => c.id === detail.material.courseId)?.name ??
-    "（時間割に無い科目）";
-
-  return <MaterialDetail detail={detail} courseName={courseName} />;
+  return <MaterialDetailScreen id={id} />;
 }
