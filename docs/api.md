@@ -12,9 +12,9 @@ API を追加・変更したら、この表も同じ PR で更新してくださ
 | 🚧   | PATCH / DELETE | `/api/courses/[id]`             | 科目の変更・削除                                    | `courses.ts`   |
 | 🚧   | GET / PATCH    | `/api/settings`                 | 時限の時刻、移動の余裕時間                          | `settings.ts`  |
 | 🚧   | GET            | `/api/home`                     | 次の授業、移動開始の目安（復習・空きコマ提案は空）  | `home.ts`      |
-| 📝   | GET / POST     | `/api/materials`                | 資料・板書の一覧・アップロード                      | `materials.ts` |
-| 📝   | GET            | `/api/materials/[id]`           | 資料の詳細と AI の解説                              | `materials.ts` |
-| 📝   | POST           | `/api/materials/[id]/generate`  | AI で要約・解説・確認問題を作る                     | `materials.ts` |
+| 🚧   | GET / POST     | `/api/materials`                | 資料・板書の一覧・アップロード                      | `materials.ts` |
+| 🚧   | GET            | `/api/materials/[id]`           | 資料の詳細と AI の解説                              | `materials.ts` |
+| 🚧   | POST           | `/api/materials/[id]/generate`  | AI で要約・解説・確認問題を作る                     | `materials.ts` |
 | 🚧   | GET            | `/api/questions`                | 問題の一覧（本人の分だけ。作成は #47 の生成）       | `questions.ts` |
 | 🚧   | POST           | `/api/questions/[id]/publish`   | 問題を公開して共有 URL を発行                       | `questions.ts` |
 | 🚧   | GET            | `/api/shared/[shareId]`         | 共有された問題を取得（ログイン不要）                | `questions.ts` |
