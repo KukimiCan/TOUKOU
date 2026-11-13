@@ -54,7 +54,7 @@ export function MaterialsList({ materials, courses }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <label className="flex flex-col gap-1">
-        <span className="text-sm font-semibold">科目</span>
+        <span className="text-sm font-semibold">科目で絞り込む</span>
         <select
           value={courseId}
           onChange={(event) => setCourseId(event.target.value)}
