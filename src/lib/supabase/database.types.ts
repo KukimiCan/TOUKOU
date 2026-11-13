@@ -213,6 +213,13 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      get_shared_question: {
+        Args: { target_share_id: string };
+        Returns: {
+          choices: Json;
+          prompt: string;
+        }[];
+      };
       profile_periods_are_valid: { Args: { value: Json }; Returns: boolean };
     };
     Enums: {
