@@ -216,3 +216,16 @@ export async function setExplanation(
     if (deleteError) throw deleteError;
   }
 }
+
+// 資料の要約（material_notes の kind='summary' の本文）。無いときは null
+export async function getSummary(materialId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("material_notes")
+    .select("body")
+    .eq("material_id", materialId)
+    .eq("kind", "summary")
+    .maybeSingle();
+  if (error) throw error;
+  return data?.body ?? null;
+}
