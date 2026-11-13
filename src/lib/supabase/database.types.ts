@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -14,6 +14,38 @@ export type Database = {
   };
   public: {
     Tables: {
+      answers: {
+        Row: {
+          choice_index: number;
+          created_at: string;
+          id: string;
+          is_correct: boolean;
+          question_id: string;
+        };
+        Insert: {
+          choice_index: number;
+          created_at?: string;
+          id?: string;
+          is_correct: boolean;
+          question_id: string;
+        };
+        Update: {
+          choice_index?: number;
+          created_at?: string;
+          id?: string;
+          is_correct?: boolean;
+          question_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "answers_question_id_fkey";
+            columns: ["question_id"];
+            isOneToOne: false;
+            referencedRelation: "questions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       courses: {
         Row: {
           building: string | null;
@@ -128,6 +160,53 @@ export type Database = {
           user_id?: string;
         };
         Relationships: [];
+      };
+      questions: {
+        Row: {
+          answer_index: number;
+          choices: Json;
+          created_at: string;
+          explanation: string;
+          id: string;
+          is_public: boolean;
+          material_id: string;
+          prompt: string;
+          share_id: string | null;
+          user_id: string;
+        };
+        Insert: {
+          answer_index: number;
+          choices: Json;
+          created_at?: string;
+          explanation: string;
+          id?: string;
+          is_public?: boolean;
+          material_id: string;
+          prompt: string;
+          share_id?: string | null;
+          user_id: string;
+        };
+        Update: {
+          answer_index?: number;
+          choices?: Json;
+          created_at?: string;
+          explanation?: string;
+          id?: string;
+          is_public?: boolean;
+          material_id?: string;
+          prompt?: string;
+          share_id?: string | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "questions_material_id_fkey";
+            columns: ["material_id"];
+            isOneToOne: false;
+            referencedRelation: "materials";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: {
