@@ -21,12 +21,12 @@ API を追加・変更したら、この表も同じ PR で更新してくださ
 | 🚧   | GET            | `/api/questions`                | 問題の一覧（本人の分だけ。作成は #47 の生成）                           | `questions.ts` |
 | 🚧   | POST           | `/api/questions/[id]/publish`   | 問題を公開して共有 URL を発行                                           | `questions.ts` |
 | 🚧   | GET            | `/api/shared/[shareId]`         | 共有された問題を取得（ログイン不要）                                    | `questions.ts` |
-| 🚧   | POST           | `/api/shared/[shareId]/answers` | 共有された問題に回答（ログイン不要）                                    | `questions.ts` |
+| 🚧   | POST           | `/api/shared/[shareId]/answers` | 共有された問題に回答（ログイン不要。連投は 429）                        | `questions.ts` |
 
 予定の API は仮決めです。担当者が issue で決めて変えてかまいません。
 
 ## 共通の決まり（仮決め）
 
 - 入出力は JSON。項目名は camelCase（`startTime` など）
-- エラーは `{ "error": "人が読めるメッセージ" }` と、適切なステータスコード（400 入力が不正、401 ログインしていない、404 見つからない、500 サーバーの問題）
+- エラーは `{ "error": "人が読めるメッセージ" }` と、適切なステータスコード（400 入力が不正、401 ログインしていない、404 見つからない、429 短い間に送りすぎ、500 サーバーの問題）
 - ログインが必要な API は、ログインしていなければ 401 を返す
