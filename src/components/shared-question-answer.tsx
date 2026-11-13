@@ -2,28 +2,35 @@
 // 共有された問題に回答する（#72）。選択肢を 1 つ選んで「回答する」を押す。
 // - 回答前の問題には、正解も解説も入っていない（src/contracts/questions.ts の SharedQuestion）
 // - 回答したら、選択肢に正解・自分の回答の印を付け、下に正誤と解説を出す（#73）
-// - 回答はいまは仮の動き（少し待って仮データの結果を返す）。API（POST /api/shared/[shareId]/answers）につなぐのは別の issue
+// - 回答は API（POST /api/shared/[shareId]/answers）に送る（#156）。失敗したら理由を出し、もう一度押せるようにする
 "use client";
 
 import { useState } from "react";
 
-import type { AnswerResult, SharedQuestion } from "@/contracts/questions";
-import { mockPreviewAnswer } from "@/mocks/shared-questions-preview";
+import {
+  type AnswerResult,
+  type SharedQuestion,
+  answerResultResponseSchema,
+} from "@/contracts/questions";
 
 import { AnswerResultView } from "./answer-result";
+import { errorMessage, fetchApi } from "./fetch-api";
 import { CHOICE_LABELS } from "./question-format";
 
 type Props = {
   question: SharedQuestion;
 };
 
-// 【仮の動き。API につなぐときに置き換える】回答を送る代わりに、少し待って仮データの結果を返す
+// 回答を送って、正誤と解説を受け取る
 async function submitAnswer(
   shareId: string,
   choiceIndex: number,
-): Promise<AnswerResult | null> {
-  await new Promise((resolve) => setTimeout(resolve, 600));
-  return mockPreviewAnswer(shareId, choiceIndex);
+): Promise<AnswerResult> {
+  const res = await fetchApi(
+    `/api/shared/${encodeURIComponent(shareId)}/answers`,
+    { method: "POST", body: { choiceIndex } },
+  );
+  return answerResultResponseSchema.parse(await res.json()).result;
 }
 
 export function SharedQuestionAnswer({ question }: Props) {
@@ -31,7 +38,8 @@ export function SharedQuestionAnswer({ question }: Props) {
   const [selected, setSelected] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<AnswerResult | null>(null);
-  const [error, setError] = useState(false);
+  // 回答を送れなかったときに出す文（失敗していなければ null）
+  const [error, setError] = useState<string | null>(null);
 
   const answered = result !== null;
 
@@ -39,13 +47,13 @@ export function SharedQuestionAnswer({ question }: Props) {
     event.preventDefault();
     if (selected === null || submitting || answered) return;
     setSubmitting(true);
-    setError(false);
-    const answer = await submitAnswer(question.shareId, selected);
-    setSubmitting(false);
-    if (answer) {
-      setResult(answer);
-    } else {
-      setError(true);
+    setError(null);
+    try {
+      setResult(await submitAnswer(question.shareId, selected));
+    } catch (e) {
+      setError(`回答を送れませんでした。${errorMessage(e)}`);
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -116,7 +124,7 @@ export function SharedQuestionAnswer({ question }: Props) {
 
       {error && (
         <p role="alert" className="text-sm">
-          回答を送れませんでした。時間をおいて、もう一度試してください。
+          {error}
         </p>
       )}
 
