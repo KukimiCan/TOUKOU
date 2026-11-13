@@ -42,7 +42,7 @@ npx supabase gen types typescript --linked > src/lib/supabase/database.types.ts
 
 - **すべてのテーブルで RLS を有効にする。** 有効にしないと、誰でも全員のデータを読めてしまう
 - 基本のポリシー：自分の行（`user_id = auth.uid()`）だけ読み書きできる
-- 共有された問題：`is_public = true` の問題だけ、ログインしていない人も読める。回答は誰でも追加できるが、他人の回答は読めない
+- 共有された問題：共有 ID を指定して `get_shared_question` で公開問題文と選択肢だけを読む。`questions` の匿名 SELECT は許可しない。回答は `answer_shared_question` に共有 ID と選んだ番号を渡し、正誤と解説を受け取る。他人の回答一覧は読めない
 - 板書の画像は **非公開の Storage バケット**に置く。共有ページで画像は出さない
 - `SUPABASE_SECRET_KEY` は RLS を無視できる強いキー。サーバー側のコードだけで、本当に必要なときだけ使う。`NEXT_PUBLIC_` を付けない
 - 共有 URL の ID は推測されにくいもの（UUID など）にする

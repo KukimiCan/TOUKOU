@@ -213,6 +213,14 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      answer_shared_question: {
+        Args: { target_choice_index: number; target_share_id: string };
+        Returns: {
+          correct_index: number;
+          explanation: string;
+          is_correct: boolean;
+        }[];
+      };
       get_shared_question: {
         Args: { target_share_id: string };
         Returns: {
