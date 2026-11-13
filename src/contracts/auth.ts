@@ -12,3 +12,7 @@ export const loginResponseSchema = z.object({
 });
 
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
+
+export const logoutResponseSchema = z.object({
+  ok: z.literal(true),
+});

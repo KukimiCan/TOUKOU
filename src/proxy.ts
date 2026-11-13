@@ -4,6 +4,15 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/supabase/database.types";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
+// ログインしていなくても開けるページ。API は、それぞれの route が 401 を返す。
+function isPublicPath(pathname: string) {
+  return (
+    pathname === "/login" ||
+    pathname.startsWith("/q/") ||
+    pathname.startsWith("/api/")
+  );
+}
+
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
   const { url, publishableKey } = getSupabaseEnv();
@@ -29,12 +38,23 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
+  const loggedIn = Boolean(data?.claims);
+
+  if (!loggedIn && !isPublicPath(request.nextUrl.pathname)) {
+    // 途中で付いた cookie（セッションの更新など）を、転送先の応答にも渡す
+    const redirect = NextResponse.redirect(new URL("/login", request.url));
+    for (const cookie of response.cookies.getAll()) {
+      redirect.cookies.set(cookie);
+    }
+    return redirect;
+  }
+
   return response;
 }
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
