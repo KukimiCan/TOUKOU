@@ -11,7 +11,7 @@ import { getMaterial } from "@/features/materials/material-store";
 
 type Context = { params: Promise<{ id: string }> };
 
-export async function GET(_request: Request, { params }: Context) {
+export async function GET(request: Request, { params }: Context) {
   await connection();
 
   const userId = await getUserId();
@@ -28,7 +28,10 @@ export async function GET(_request: Request, { params }: Context) {
   return Response.json(
     materialDetailResponseSchema.parse({
       material: item.material,
-      imageUrl: item.imageUrl,
+      imageUrl: new URL(
+        `/api/materials/${item.material.id}/image`,
+        request.url,
+      ).toString(),
       explanation: item.explanation,
     }),
   );
