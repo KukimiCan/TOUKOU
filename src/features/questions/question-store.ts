@@ -35,3 +35,13 @@ export function publishQuestion(userId: string, id: string): Question | null {
   );
   return published;
 }
+
+// 共有 URL（shareId）から公開中の問題を探す。ログインは要らない。
+// 公開していない問題や、無い shareId は null
+export function findSharedQuestion(shareId: string): Question | null {
+  for (const questions of questionsByUser.values()) {
+    const found = questions.find((q) => q.isPublic && q.shareId === shareId);
+    if (found) return found;
+  }
+  return null;
+}
