@@ -45,3 +45,13 @@ export function findSharedQuestion(shareId: string): Question | null {
   }
   return null;
 }
+
+// 資料の問題をまとめて入れ替える（作り直しのときに問題を増やさないため）
+export function replaceQuestionsForMaterial(
+  userId: string,
+  materialId: string,
+  questions: Question[],
+): void {
+  const kept = listQuestions(userId).filter((q) => q.materialId !== materialId);
+  questionsByUser.set(userId, [...kept, ...questions]);
+}

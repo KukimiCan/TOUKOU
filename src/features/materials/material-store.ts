@@ -31,3 +31,24 @@ export function getMaterial(userId: string, id: string): StoredMaterial | null {
 export function addMaterial(userId: string, item: StoredMaterial): void {
   materialsByUser.set(userId, [...(materialsByUser.get(userId) ?? []), item]);
 }
+
+// 解説を保存する（作り直しのときは上書き）。資料が無いときは何もしない
+export function setExplanation(
+  userId: string,
+  id: string,
+  explanation: Explanation,
+): void {
+  const list = materialsByUser.get(userId) ?? [];
+  materialsByUser.set(
+    userId,
+    list.map((item) =>
+      item.material.id === id
+        ? {
+            ...item,
+            explanation,
+            material: { ...item.material, hasExplanation: true },
+          }
+        : item,
+    ),
+  );
+}
