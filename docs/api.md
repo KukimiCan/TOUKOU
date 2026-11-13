@@ -13,6 +13,7 @@ API を追加・変更したら、この表も同じ PR で更新してくださ
 | 🚧   | GET / PATCH    | `/api/settings`                 | 時限の時刻、移動の余裕時間                                              | `settings.ts`  |
 | 🚧   | GET            | `/api/home`                     | 次の授業、移動開始の目安（復習・空きコマ提案は空）                      | `home.ts`      |
 | 🚧   | POST           | `/api/auth/login`               | ログイン（メールとパスワード。成功で cookie を付ける。失敗は 401）      | `auth.ts`      |
+| 🚧   | POST           | `/api/auth/logout`              | ログアウト（セッションを終わらせ、cookie を消す）                       | `auth.ts`      |
 | 🚧   | GET / POST     | `/api/materials`                | 資料・板書の一覧・アップロード（画像は仮の保存先、Storage は #29 待ち） | `materials.ts` |
 | 🚧   | GET            | `/api/materials/[id]`           | 資料の詳細と AI の解説（元画像の URL は Storage 待ち）                  | `materials.ts` |
 | 🚧   | GET            | `/api/materials/[id]/image`     | 元の板書画像（本人だけ。他人と無い ID は 404）                          | `materials.ts` |
