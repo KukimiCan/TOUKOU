@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -14,6 +14,38 @@ export type Database = {
   };
   public: {
     Tables: {
+      answers: {
+        Row: {
+          choice_index: number;
+          created_at: string;
+          id: string;
+          is_correct: boolean;
+          question_id: string;
+        };
+        Insert: {
+          choice_index: number;
+          created_at?: string;
+          id?: string;
+          is_correct: boolean;
+          question_id: string;
+        };
+        Update: {
+          choice_index?: number;
+          created_at?: string;
+          id?: string;
+          is_correct?: boolean;
+          question_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "answers_question_id_fkey";
+            columns: ["question_id"];
+            isOneToOne: false;
+            referencedRelation: "questions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       courses: {
         Row: {
           building: string | null;
@@ -47,6 +79,70 @@ export type Database = {
         };
         Relationships: [];
       };
+      material_notes: {
+        Row: {
+          body: string;
+          id: string;
+          kind: string;
+          material_id: string;
+        };
+        Insert: {
+          body: string;
+          id?: string;
+          kind: string;
+          material_id: string;
+        };
+        Update: {
+          body?: string;
+          id?: string;
+          kind?: string;
+          material_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "material_notes_material_id_fkey";
+            columns: ["material_id"];
+            isOneToOne: false;
+            referencedRelation: "materials";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      materials: {
+        Row: {
+          course_id: string;
+          created_at: string;
+          id: string;
+          kind: string;
+          storage_path: string;
+          user_id: string;
+        };
+        Insert: {
+          course_id: string;
+          created_at?: string;
+          id?: string;
+          kind: string;
+          storage_path: string;
+          user_id: string;
+        };
+        Update: {
+          course_id?: string;
+          created_at?: string;
+          id?: string;
+          kind?: string;
+          storage_path?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "materials_course_id_fkey";
+            columns: ["course_id"];
+            isOneToOne: false;
+            referencedRelation: "courses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           periods: Json;
@@ -64,6 +160,53 @@ export type Database = {
           user_id?: string;
         };
         Relationships: [];
+      };
+      questions: {
+        Row: {
+          answer_index: number;
+          choices: Json;
+          created_at: string;
+          explanation: string;
+          id: string;
+          is_public: boolean;
+          material_id: string;
+          prompt: string;
+          share_id: string | null;
+          user_id: string;
+        };
+        Insert: {
+          answer_index: number;
+          choices: Json;
+          created_at?: string;
+          explanation: string;
+          id?: string;
+          is_public?: boolean;
+          material_id: string;
+          prompt: string;
+          share_id?: string | null;
+          user_id: string;
+        };
+        Update: {
+          answer_index?: number;
+          choices?: Json;
+          created_at?: string;
+          explanation?: string;
+          id?: string;
+          is_public?: boolean;
+          material_id?: string;
+          prompt?: string;
+          share_id?: string | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "questions_material_id_fkey";
+            columns: ["material_id"];
+            isOneToOne: false;
+            referencedRelation: "materials";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: {

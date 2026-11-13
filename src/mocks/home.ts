@@ -16,8 +16,9 @@ export const mockHomeResponse: HomeResponse = {
   reviews: [
     {
       materialId: "00000000-0000-4000-8000-000000000101",
-      courseName: "プログラミング基礎（仮）",
-      summary: "前回は for 文と配列を使った合計の求め方を学んだ。",
+      courseName: "微分積分学（仮）",
+      summary:
+        "前回は導関数の定義と、平均変化率から瞬間変化率への考え方を学んだ。",
     },
   ],
   freeTimeSuggestions: [
