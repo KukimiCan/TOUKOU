@@ -3,6 +3,7 @@
 // - 問題文、選択肢（正解に印）、解説、元の資料へのリンクを出し、公開前に中身を確かめられる
 // - 「公開済み」「未公開」をバッジで見分けられる
 // - 「公開する」を押すと、何が公開されるかを説明する確認を挟んでから公開する
+// - 公開済みの問題には、共有 URL をコピーするボタンを出す（#71）
 // - 公開はいまは仮の動き（少し待って共有 ID を作る）。API（POST /api/questions/[id]/publish）につなぐのは別の issue
 "use client";
 
@@ -11,6 +12,7 @@ import { useState } from "react";
 
 import type { Question } from "@/contracts/questions";
 
+import { CopyShareUrl } from "./copy-share-url";
 import { CHOICE_LABELS } from "./question-format";
 
 type Props = {
@@ -144,9 +146,12 @@ function QuestionCard({
       </p>
 
       {question.isPublic ? (
-        <p className="text-sm">
-          公開中です。URL を知っている人が回答できます。
-        </p>
+        <div className="flex flex-col gap-2">
+          <p className="text-sm">
+            公開中です。URL を知っている人が回答できます。
+          </p>
+          {question.shareId && <CopyShareUrl shareId={question.shareId} />}
+        </div>
       ) : confirming ? (
         <div className="flex flex-col gap-3 rounded border border-amber-500/60 bg-amber-500/10 p-3">
           <p className="text-sm leading-relaxed">
