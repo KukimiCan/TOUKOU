@@ -77,7 +77,7 @@ export async function POST(request: Request) {
 
   // 科目は本人のものだけ使える
   const { courseId, kind, file: image } = parsed.data;
-  if (!listCourses(userId).some((course) => course.id === courseId)) {
+  if (!(await listCourses(userId)).some((course) => course.id === courseId)) {
     return Response.json({ error: "科目が見つかりません" }, { status: 400 });
   }
 

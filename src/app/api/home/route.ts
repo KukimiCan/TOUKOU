@@ -16,5 +16,7 @@ export async function GET() {
     return Response.json({ error: "ログインしてください" }, { status: 401 });
   }
 
-  return Response.json(homeResponseSchema.parse(getHome(userId, new Date())));
+  return Response.json(
+    homeResponseSchema.parse(await getHome(userId, new Date())),
+  );
 }

@@ -8,7 +8,7 @@ API を追加・変更したら、この表も同じ PR で更新してくださ
 | 状態 | メソッド       | パス                            | 内容                                                                    | contracts      |
 | ---- | -------------- | ------------------------------- | ----------------------------------------------------------------------- | -------------- |
 | ✅   | GET            | `/api/health`                   | 開発環境の確認（Supabase と AI の設定状況）                             | `health.ts`    |
-| 🚧   | GET / POST     | `/api/courses`                  | 時間割の科目の一覧・登録（今は仮の保存先、DB 待ち）                     | `courses.ts`   |
+| 🚧   | GET / POST     | `/api/courses`                  | 時間割の科目の一覧・登録（DB に保存。ログイン後の確認は未実施）         | `courses.ts`   |
 | 🚧   | PATCH / DELETE | `/api/courses/[id]`             | 科目の変更・削除                                                        | `courses.ts`   |
 | 🚧   | GET / PATCH    | `/api/settings`                 | 時限の時刻、移動の余裕時間                                              | `settings.ts`  |
 | 🚧   | GET            | `/api/home`                     | 次の授業、移動開始の目安（復習・空きコマ提案は空）                      | `home.ts`      |
