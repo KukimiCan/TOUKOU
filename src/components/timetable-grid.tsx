@@ -4,6 +4,7 @@
 // - 行：基本は 1〜5 限。6 限以降は、授業がある時限まで増やす
 // - 科目名：マスの幅に合わせて文字を小さくし、最低 2 文字は 1 行に入るようにする
 // - onSelectEmpty を渡すと、空いたマス（細い列を除く）を押せるようになる（科目の登録 #56）
+// - onSelectCourse を渡すと、科目のマスを押せるようになる（科目の変更・削除 #57）
 import type { Course, DayOfWeek } from "@/contracts/courses";
 import type { PeriodTime } from "@/contracts/settings";
 
@@ -45,9 +46,16 @@ type Props = {
   periodTimes: PeriodTime[];
   // 空いたマスが押されたときに呼ぶ（渡さなければ、マスは押せない）
   onSelectEmpty?: (dayOfWeek: DayOfWeek, period: number) => void;
+  // 科目のマスが押されたときに呼ぶ（渡さなければ、マスは押せない）
+  onSelectCourse?: (course: Course) => void;
 };
 
-export function TimetableGrid({ courses, periodTimes, onSelectEmpty }: Props) {
+export function TimetableGrid({
+  courses,
+  periodTimes,
+  onSelectEmpty,
+  onSelectCourse,
+}: Props) {
   const columns = getColumns(courses);
   const periods = getPeriods(courses);
 
@@ -105,7 +113,7 @@ export function TimetableGrid({ courses, periodTimes, onSelectEmpty }: Props) {
                   className="bg-background @container min-h-16 p-1"
                 >
                   {course ? (
-                    <CourseCell course={course} />
+                    <CourseCell course={course} onSelect={onSelectCourse} />
                   ) : (
                     onSelectEmpty &&
                     !col.narrow && (
@@ -127,9 +135,18 @@ export function TimetableGrid({ courses, periodTimes, onSelectEmpty }: Props) {
   );
 }
 
-function CourseCell({ course }: { course: Course }) {
-  return (
-    <div className="flex h-full flex-col gap-0.5 rounded-sm bg-current/10 p-0.5 leading-tight">
+// 科目のマス。onSelect があるときはボタンにして、押すと変更のシートが開く
+function CourseCell({
+  course,
+  onSelect,
+}: {
+  course: Course;
+  onSelect?: (course: Course) => void;
+}) {
+  const className =
+    "flex h-full w-full flex-col gap-0.5 rounded-sm bg-current/10 p-0.5 text-left leading-tight";
+  const content = (
+    <>
       {/* マスの幅（100cqi）の半分を文字の大きさの上限にして、最低 2 文字を 1 行に収める */}
       <span
         className="line-clamp-3 font-semibold [overflow-wrap:anywhere]"
@@ -145,6 +162,18 @@ function CourseCell({ course }: { course: Course }) {
           {course.room}
         </span>
       )}
-    </div>
+    </>
+  );
+
+  if (!onSelect) return <div className={className}>{content}</div>;
+  return (
+    <button
+      type="button"
+      aria-label={`${DAY_LABELS[course.dayOfWeek]}曜 ${course.period}限 ${course.name}を変更`}
+      onClick={() => onSelect(course)}
+      className={`${className} hover:bg-current/15 active:bg-current/20`}
+    >
+      {content}
+    </button>
   );
 }
