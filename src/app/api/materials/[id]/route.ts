@@ -20,7 +20,7 @@ export async function GET(request: Request, { params }: Context) {
   }
 
   const id = z.uuid().safeParse((await params).id);
-  const item = id.success ? getMaterial(userId, id.data) : null;
+  const item = id.success ? await getMaterial(userId, id.data) : null;
   if (!item) {
     return Response.json({ error: "資料が見つかりません" }, { status: 404 });
   }

@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const materials = listMaterials(userId, parsed.data.courseId);
+  const materials = await listMaterials(userId, parsed.data.courseId);
   return Response.json(materialsResponseSchema.parse({ materials }));
 }
 
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
   }
 
   const bytes = new Uint8Array(await image.arrayBuffer());
-  const material = addUploadedMaterial(userId, {
+  const material = await addUploadedMaterial(userId, {
     courseId,
     kind,
     bytes,
