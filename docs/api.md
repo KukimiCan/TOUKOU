@@ -18,7 +18,7 @@ API を追加・変更したら、この表も同じ PR で更新してくださ
 | 🚧   | GET            | `/api/questions`                | 問題の一覧（本人の分だけ。作成は #47 の生成）       | `questions.ts` |
 | 🚧   | POST           | `/api/questions/[id]/publish`   | 問題を公開して共有 URL を発行                       | `questions.ts` |
 | 🚧   | GET            | `/api/shared/[shareId]`         | 共有された問題を取得（ログイン不要）                | `questions.ts` |
-| 📝   | POST           | `/api/shared/[shareId]/answers` | 共有された問題に回答（ログイン不要）                | `questions.ts` |
+| 🚧   | POST           | `/api/shared/[shareId]/answers` | 共有された問題に回答（ログイン不要）                | `questions.ts` |
 
 予定の API は仮決めです。担当者が issue で決めて変えてかまいません。
 
