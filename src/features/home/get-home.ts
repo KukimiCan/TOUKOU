@@ -30,13 +30,13 @@ function suggestionText(minutes: number, hasReview: boolean): string {
     : `${minutes} 分の空き。休憩しよう。`;
 }
 
-export function getHome(
+export async function getHome(
   userId: string,
   now: Date,
   materials: ReviewSource[] = [],
-): HomeResponse {
-  const courses = listCourses(userId);
-  const settings = getSettings(userId);
+): Promise<HomeResponse> {
+  const courses = await listCourses(userId);
+  const settings = await getSettings(userId);
 
   const next = findNextClass(now, courses, settings.periods);
   if (!next) {

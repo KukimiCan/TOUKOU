@@ -18,7 +18,7 @@ export async function GET() {
   const userId = await getUserId();
   if (!userId) return unauthorized();
 
-  return Response.json({ courses: listCourses(userId) });
+  return Response.json({ courses: await listCourses(userId) });
 }
 
 export async function POST(request: Request) {
@@ -36,6 +36,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const course = addCourse(userId, parsed.data);
+  const course = await addCourse(userId, parsed.data);
   return Response.json(courseResponseSchema.parse({ course }), { status: 201 });
 }

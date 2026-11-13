@@ -42,7 +42,7 @@ export async function PATCH(request: Request, context: Context) {
     );
   }
 
-  const course = updateCourse(userId, id.data, parsed.data);
+  const course = await updateCourse(userId, id.data, parsed.data);
   if (!course) return notFound();
 
   return Response.json(courseResponseSchema.parse({ course }));
@@ -57,7 +57,7 @@ export async function DELETE(_request: Request, context: Context) {
   const id = await readId(context);
   if (!id.success) return notFound();
 
-  if (!deleteCourse(userId, id.data)) return notFound();
+  if (!(await deleteCourse(userId, id.data))) return notFound();
 
   return new Response(null, { status: 204 });
 }

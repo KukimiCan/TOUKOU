@@ -20,7 +20,7 @@ export async function GET() {
   const userId = await getUserId();
   if (!userId) return unauthorized();
 
-  return Response.json(settingsSchema.parse(getSettings(userId)));
+  return Response.json(settingsSchema.parse(await getSettings(userId)));
 }
 
 export async function PATCH(request: Request) {
@@ -39,6 +39,6 @@ export async function PATCH(request: Request) {
   }
 
   return Response.json(
-    settingsSchema.parse(updateSettings(userId, parsed.data)),
+    settingsSchema.parse(await updateSettings(userId, parsed.data)),
   );
 }
