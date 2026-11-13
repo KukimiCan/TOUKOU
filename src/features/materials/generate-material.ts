@@ -33,12 +33,12 @@ export async function generateMaterial(
   userId: string,
   id: string,
 ): Promise<{ explanation: Explanation; questionCount: number } | null> {
-  const item = getMaterial(userId, id);
+  const item = await getMaterial(userId, id);
   if (!item) return null;
   // mock のときは画像を読まない。本物のときは保存した元画像を読む
   const image = isMockAi()
     ? new Uint8Array()
-    : (getImage(userId, id)?.bytes ?? new Uint8Array());
+    : ((await getImage(userId, id))?.bytes ?? new Uint8Array());
 
   const explanation = await explainBoard(image);
   const generated = await generateQuestions(explanationToText(explanation));
@@ -53,7 +53,7 @@ export async function generateMaterial(
     createdAt: now,
   }));
 
-  setExplanation(userId, id, explanation);
+  await setExplanation(userId, id, explanation);
   replaceQuestionsForMaterial(userId, id, questions);
   return { explanation, questionCount: questions.length };
 }

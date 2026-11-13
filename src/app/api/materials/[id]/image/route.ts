@@ -19,7 +19,7 @@ export async function GET(_request: Request, { params }: Context) {
   }
 
   const id = z.uuid().safeParse((await params).id);
-  const image = id.success ? getImage(userId, id.data) : null;
+  const image = id.success ? await getImage(userId, id.data) : null;
   if (!image) {
     return Response.json({ error: "資料が見つかりません" }, { status: 404 });
   }
