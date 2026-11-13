@@ -3,17 +3,15 @@
 // 時間割と設定を読み、計算関数で次の授業・移動開始時刻・空き時間・復習候補を求める。
 //
 // 空きコマの文面は、今は計算で作る（AI の関数 #82・#83 ができたら差し替える）。
-// 資料の保存先（#45）ができるまで、資料は空の配列を渡す。そのため reviews は今は空。
+// 復習候補は、AI の解説がある資料から選ぶ（資料は DB の materials から読む）。
 import type { FreeTimeSuggestion, HomeResponse } from "@/contracts/home";
 import { listCourses } from "@/features/courses/course-store";
 import { getSettings } from "@/features/settings/settings-store";
 import { calcFreeTime } from "@/features/timetable/free-time";
 import { calcLeaveTime } from "@/features/timetable/leave-time";
 import { findNextClass } from "@/features/timetable/next-class";
-import {
-  pickReviewMaterial,
-  type ReviewSource,
-} from "@/features/timetable/review-pick";
+import { pickReviewMaterial } from "@/features/timetable/review-pick";
+import { getSummary, listMaterials } from "@/features/materials/material-store";
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
@@ -33,7 +31,6 @@ function suggestionText(minutes: number, hasReview: boolean): string {
 export async function getHome(
   userId: string,
   now: Date,
-  materials: ReviewSource[] = [],
 ): Promise<HomeResponse> {
   const courses = await listCourses(userId);
   const settings = await getSettings(userId);
@@ -47,7 +44,17 @@ export async function getHome(
 
   // 移動の時間を残すため、空き時間は移動開始時刻までにする
   const free = calcFreeTime(now, leave.leaveAt);
-  const review = pickReviewMaterial(next.course.id, materials);
+  // 復習の候補：解説がある資料だけ（要約が必ず付いているため）
+  const materials = (await listMaterials(userId))
+    .filter((m) => m.hasExplanation)
+    .map((m) => ({
+      materialId: m.id,
+      courseId: m.courseId,
+      createdAt: new Date(m.createdAt),
+    }));
+  const pick = pickReviewMaterial(next.course.id, materials);
+  const summary = pick ? await getSummary(pick.materialId) : null;
+  const review = pick && summary !== null ? pick : null;
 
   const freeTimeSuggestions: FreeTimeSuggestion[] = free
     ? [
@@ -68,8 +75,16 @@ export async function getHome(
       leaveAt: toJstIso(leave.leaveAt),
       shouldLeaveNow: leave.shouldLeaveNow,
     },
-    // 資料の要約は AI の結果が要る（#45・#47）ので、まだ作らない
-    reviews: [],
+    reviews:
+      review && summary !== null
+        ? [
+            {
+              materialId: review.materialId,
+              courseName: next.course.name,
+              summary,
+            },
+          ]
+        : [],
     freeTimeSuggestions,
   };
 }

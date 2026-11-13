@@ -11,7 +11,7 @@ API を追加・変更したら、この表も同じ PR で更新してくださ
 | 🚧   | GET / POST     | `/api/courses`                  | 時間割の科目の一覧・登録（DB に保存。ログイン後の確認は未実施）         | `courses.ts`   |
 | 🚧   | PATCH / DELETE | `/api/courses/[id]`             | 科目の変更・削除                                                        | `courses.ts`   |
 | 🚧   | GET / PATCH    | `/api/settings`                 | 時限の時刻、移動の余裕時間                                              | `settings.ts`  |
-| 🚧   | GET            | `/api/home`                     | 次の授業、移動開始の目安（復習・空きコマ提案は空）                      | `home.ts`      |
+| 🚧   | GET            | `/api/home`                     | 次の授業、移動開始の目安、空き時間の提案、板書の復習（解説のある資料）  | `home.ts`      |
 | 🚧   | POST           | `/api/auth/login`               | ログイン（メールとパスワード。成功で cookie を付ける。失敗は 401）      | `auth.ts`      |
 | 🚧   | POST           | `/api/auth/logout`              | ログアウト（セッションを終わらせ、cookie を消す）                       | `auth.ts`      |
 | 🚧   | GET / POST     | `/api/materials`                | 資料・板書の一覧・アップロード（DB に保存し、画像は #29 の Storage へ） | `materials.ts` |
