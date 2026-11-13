@@ -42,9 +42,14 @@ export function LoginForm() {
       return { error: "メールアドレスとパスワードを入力してください。", email };
     }
     if (!hasSupabaseEnv()) {
+      // 原因（キーの未設定）は開発者向けの情報なので、開発時のログだけに出す
+      if (process.env.NODE_ENV === "development") {
+        console.error(
+          "Supabase の環境変数がありません。.env.local に NEXT_PUBLIC_SUPABASE_URL と NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY を設定してください（docs/getting-started.md）。",
+        );
+      }
       return {
-        error:
-          "ログインの準備がまだできていません（Supabase のキーが未設定です）。",
+        error: "ログインできませんでした。時間をおいてもう一度試してください。",
         email,
       };
     }
