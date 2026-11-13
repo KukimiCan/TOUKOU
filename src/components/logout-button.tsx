@@ -36,7 +36,7 @@ export function LogoutButton() {
   }
 
   return (
-    <div className="fixed top-4 right-4 z-10 flex items-center gap-2 text-sm">
+    <div className="flex items-center justify-end gap-2 px-4 pt-3 text-sm">
       {error && (
         <span role="alert" className="rounded bg-red-50 px-2 py-1 text-red-700">
           {error}
