@@ -12,6 +12,7 @@ import { generateQuestions } from "@/lib/ai/generate-questions";
 import { replaceQuestionsForMaterial } from "@/features/questions/question-store";
 
 import {
+  getImage,
   getMaterial,
   setExplanation,
 } from "@/features/materials/material-store";
@@ -34,11 +35,10 @@ export async function generateMaterial(
 ): Promise<{ explanation: Explanation; questionCount: number } | null> {
   const item = getMaterial(userId, id);
   if (!item) return null;
-
-  // mock のときは画像を取りに行かない。本物のときは元画像を取る（#45 / #29 で画像が保存されてから動く）
+  // mock のときは画像を読まない。本物のときは保存した元画像を読む
   const image = isMockAi()
     ? new Uint8Array()
-    : new Uint8Array(await (await fetch(item.imageUrl)).arrayBuffer());
+    : (getImage(userId, id)?.bytes ?? new Uint8Array());
 
   const explanation = await explainBoard(image);
   const generated = await generateQuestions(explanationToText(explanation));
