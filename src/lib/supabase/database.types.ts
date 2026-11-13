@@ -47,6 +47,70 @@ export type Database = {
         };
         Relationships: [];
       };
+      material_notes: {
+        Row: {
+          body: string;
+          id: string;
+          kind: string;
+          material_id: string;
+        };
+        Insert: {
+          body: string;
+          id?: string;
+          kind: string;
+          material_id: string;
+        };
+        Update: {
+          body?: string;
+          id?: string;
+          kind?: string;
+          material_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "material_notes_material_id_fkey";
+            columns: ["material_id"];
+            isOneToOne: false;
+            referencedRelation: "materials";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      materials: {
+        Row: {
+          course_id: string;
+          created_at: string;
+          id: string;
+          kind: string;
+          storage_path: string;
+          user_id: string;
+        };
+        Insert: {
+          course_id: string;
+          created_at?: string;
+          id?: string;
+          kind: string;
+          storage_path: string;
+          user_id: string;
+        };
+        Update: {
+          course_id?: string;
+          created_at?: string;
+          id?: string;
+          kind?: string;
+          storage_path?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "materials_course_id_fkey";
+            columns: ["course_id"];
+            isOneToOne: false;
+            referencedRelation: "courses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           periods: Json;
