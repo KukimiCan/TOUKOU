@@ -35,6 +35,8 @@ function formulaKey(formula: string): string {
 }
 
 // 画像のバイナリデータから解説を生成する。資料との紐づけ・保存は呼び出し元で行う。
+// 解説の呼び出しが失敗したときは例外を投げる（呼び出し元が 502 を返す）。
+// 数式の読み取りの呼び出しが失敗したとき、または読み取りが空のときは、照合せずに注記を残す。
 export async function explainBoard(image: Uint8Array): Promise<Explanation> {
   if (isMockAi()) {
     return structuredClone(mockExplanation);
@@ -42,53 +44,92 @@ export async function explainBoard(image: Uint8Array): Promise<Explanation> {
 
   const model = getModel();
   const imagePart = { type: "file", mediaType: "image", data: image } as const;
-  const [{ output: reading }, { output }] = await Promise.all([
+  const [readingResult, explanationResult] = await Promise.allSettled([
     generateText({
       model,
       system: boardReadingPrompt,
       output: Output.object({ schema: boardReadingSchema }),
-      messages: [{ role: "user", content: [imagePart] }],
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "この板書画像の数式を読み取ってください。" },
+            imagePart,
+          ],
+        },
+      ],
     }),
     generateText({
       model,
       system: explanationPrompt,
       output: Output.object({ schema: boardExplanationSchema }),
-      messages: [{ role: "user", content: [imagePart] }],
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "この板書画像を解説してください。" },
+            imagePart,
+          ],
+        },
+      ],
     }),
   ]);
 
-  const secondKeys = new Set(
-    output.formulas.map(({ formula }) => formulaKey(formula)),
-  );
-  const firstKeys = new Set(
-    reading.formulas.map(({ formula }) => formulaKey(formula)),
-  );
-  const disputed = reading.formulas
-    .filter(({ formula }) => !secondKeys.has(formulaKey(formula)))
-    .map(({ position }) => `${position}。数式の読み取りが一致しませんでした。`);
-  const explanationOnly = output.formulas.flatMap(({ formula }, index) =>
-    firstKeys.has(formulaKey(formula))
-      ? []
-      : [`解説側の数式候補 ${index + 1}。数式の読み取りが一致しませんでした。`],
-  );
-  const formulas = output.formulas.filter(({ formula }) =>
-    firstKeys.has(formulaKey(formula)),
-  );
+  // 解説が無ければ、結果を作れないので失敗にする
+  if (explanationResult.status === "rejected") throw explanationResult.reason;
+  const { output } = explanationResult.value;
+  const reading =
+    readingResult.status === "fulfilled" ? readingResult.value.output : null;
+
+  const notes: string[] = [];
+  let formulas = output.formulas;
+  // 照合できるのは、読み取りが成功し、数式が 1 つ以上ある場合だけ
+  if (reading === null) {
+    notes.push("数式の読み取りに失敗したため、数式は照合していません。");
+  } else if (reading.formulas.length === 0) {
+    notes.push("板書の数式を読み取れなかったため、数式は照合していません。");
+  } else {
+    const secondKeys = new Set(
+      output.formulas.map(({ formula }) => formulaKey(formula)),
+    );
+    const firstKeys = new Set(
+      reading.formulas.map(({ formula }) => formulaKey(formula)),
+    );
+    notes.push(
+      ...reading.formulas
+        .filter(({ formula }) => !secondKeys.has(formulaKey(formula)))
+        .map(
+          ({ position }) => `${position}。数式の読み取りが一致しませんでした。`,
+        ),
+      ...output.formulas.flatMap(({ formula }, index) =>
+        firstKeys.has(formulaKey(formula))
+          ? []
+          : [
+              `解説側の数式候補 ${index + 1}。数式の読み取りが一致しませんでした。`,
+            ],
+      ),
+    );
+    formulas = output.formulas.filter(({ formula }) =>
+      firstKeys.has(formulaKey(formula)),
+    );
+  }
+
+  const readingUnreadable = reading?.unreadable ?? [];
   const unreadable = [
     ...new Set([
-      ...[...reading.unreadable, ...output.unreadable].map(
+      ...[...readingUnreadable, ...output.unreadable].map(
         ({ position, reason }) =>
           `${position}。判読できませんでした（${reason}）。`,
       ),
-      ...disputed,
-      ...explanationOnly,
+      ...notes,
     ]),
   ];
 
   // 不鮮明な箇所が多い写真では、一致した式にも同じ誤読が残り得る。
   const tooManyUnclearRegions =
-    reading.unreadable.length >= 2 &&
-    reading.unreadable.length >= reading.formulas.length;
+    reading !== null &&
+    readingUnreadable.length >= 2 &&
+    readingUnreadable.length >= reading.formulas.length;
   if (tooManyUnclearRegions) {
     return {
       summary:
