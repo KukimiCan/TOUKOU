@@ -8,13 +8,23 @@ import { explanationSchema } from "@/lib/ai/explanation-schema";
 // 資料の種類。board = 板書の写真、slide = スライド・配布資料の写真
 export const materialKindSchema = z.enum(["board", "slide"]);
 
-// アップロードできる画像。Vercel の 1 回の送信の上限（4.5 MB）より少し小さくする
+// アップロードできる画像。Vercel の 1 回の送信の上限（4.5 MB）より少し小さくする。
+// HEIC（iPhone の既定の形式）は受けない。サーバーで読むための変換を入れないため。
+// 写真は front が送る前に JPEG に変換し、縮小してから送る。
 export const MATERIAL_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
 ] as const;
 export const MATERIAL_IMAGE_MAX_BYTES = 4 * 1024 * 1024;
+
+// 画像 1 枚の検査（形式と大きさ）。API はこれで送られたファイルを確かめる
+export const materialImageSchema = z
+  .file()
+  .mime([...MATERIAL_IMAGE_TYPES], {
+    message: "JPEG・PNG・WebP の画像を送ってください",
+  })
+  .max(MATERIAL_IMAGE_MAX_BYTES, { message: "画像は 4 MB 以下にしてください" });
 
 export const materialSchema = z.object({
   id: z.uuid(),
@@ -30,6 +40,11 @@ export const materialSchema = z.object({
 export const uploadMaterialFieldsSchema = z.object({
   courseId: z.uuid(),
   kind: materialKindSchema.default("board"),
+});
+
+// アップロードの全体（画像 "file" と項目）。API はこれで受け取る
+export const uploadMaterialFormSchema = uploadMaterialFieldsSchema.extend({
+  file: materialImageSchema,
 });
 
 export const materialResponseSchema = z.object({ material: materialSchema });
