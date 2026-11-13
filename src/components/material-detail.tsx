@@ -40,10 +40,14 @@ export function MaterialDetail({ detail, courseName }: Props) {
   async function handleGenerate() {
     if (generating) return;
     setGenerating(true);
-    const result = await generate();
-    setExplanation(result.explanation);
-    setQuestionCount(result.questionCount);
-    setGenerating(false);
+    // 失敗しても「作っています…」のまま止まらないよう、最後に必ず戻す
+    try {
+      const result = await generate();
+      setExplanation(result.explanation);
+      setQuestionCount(result.questionCount);
+    } finally {
+      setGenerating(false);
+    }
   }
 
   return (
@@ -96,8 +100,9 @@ export function MaterialDetail({ detail, courseName }: Props) {
         ) : (
           <div className="flex flex-col gap-3 rounded border border-current/20 p-4">
             <p className="text-sm leading-relaxed">
-              この資料の解説はまだありません。AI
-              に、解説（要約・用語・数式など）と確認問題を作ってもらえます。
+              {
+                "この資料の解説はまだありません。AIに、解説（要約・用語・数式など）と確認問題を作ってもらえます。"
+              }
             </p>
             <button
               type="button"

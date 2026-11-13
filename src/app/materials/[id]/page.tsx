@@ -30,15 +30,16 @@ export default function MaterialPage({ params }: PageProps<"/materials/[id]">) {
           </p>
         }
       >
-        {params.then(({ id }) => (
-          <MaterialContent id={id} />
-        ))}
+        <MaterialContent params={params} />
       </Suspense>
     </main>
   );
 }
 
-function MaterialContent({ id }: { id: string }) {
+async function MaterialContent({
+  params,
+}: Pick<PageProps<"/materials/[id]">, "params">) {
+  const { id } = await params;
   const detail = mockPreviewMaterialDetail(id);
   if (!detail) notFound();
 
