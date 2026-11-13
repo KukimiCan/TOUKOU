@@ -1,5 +1,5 @@
 // 仮データ（架空）。形は src/contracts/materials.ts に合わせる。
-// courseId は src/mocks/courses.ts の「微分積分学（仮）」と同じ ID。
+// courseId は src/mocks/courses.ts の「プログラミング基礎（仮）」と同じ ID（ホームの短い復習と合わせる）。
 // 解説の中身は AI 担当の仮データ（src/lib/ai/mocks/explanation.ts）を使う。
 import type {
   GenerateMaterialResponse,
@@ -9,7 +9,7 @@ import type {
 } from "@/contracts/materials";
 import { mockExplanation } from "@/lib/ai/mocks/explanation";
 
-const mockCourseId = "00000000-0000-4000-8000-000000000001";
+const mockCourseId = "00000000-0000-4000-8000-000000000002";
 
 export const mockMaterials: Material[] = [
   {
