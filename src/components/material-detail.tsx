@@ -10,7 +10,6 @@
 
 import {
   CircleAlert,
-  CircleCheck,
   ExternalLink,
   ImageOff,
   ListChecks,
@@ -33,6 +32,8 @@ import { Screen } from "./ui/screen";
 import { Spinner } from "./ui/spinner";
 import { type Explanation, ExplanationView } from "./explanation-view";
 import { errorMessage, fetchApi } from "./fetch-api";
+import { Mascot } from "./mascot";
+import { MascotLine } from "./mascot-line";
 import {
   formatCreatedAt,
   formatElapsed,
@@ -157,6 +158,9 @@ export function MaterialDetail({ detail, courseName, autoGenerate }: Props) {
               role="alert"
               className="bg-danger/10 flex flex-col gap-3 rounded-sm p-4"
             >
+              <MascotLine expression="panic" size={56}>
+                うそ、失敗した…！
+              </MascotLine>
               <div className="text-danger flex gap-2 text-sm">
                 <CircleAlert aria-hidden className="mt-1 size-4 shrink-0" />
                 <div className="flex flex-col">
@@ -324,13 +328,20 @@ function Done({ count }: { count: number }) {
       role="status"
       className="bg-success/10 text-success flex shrink-0 items-center gap-2 rounded-sm px-3 py-2 text-sm font-semibold transition-[opacity,translate] duration-300 starting:translate-y-1 starting:opacity-0"
     >
-      <CircleCheck
-        aria-hidden
-        className="size-4 shrink-0 transition-transform delay-150 duration-300 starting:scale-0"
+      <Mascot
+        expression="praise"
+        size={48}
+        decorative
+        className="-my-1 transition-transform delay-150 duration-300 starting:scale-0"
       />
-      {count > 0
-        ? `解説と確認問題 ${count} 問ができました`
-        : "解説ができました"}
+      <span className="flex flex-col">
+        {count > 0
+          ? `解説と確認問題 ${count} 問ができました`
+          : "解説ができました"}
+        <span className="text-muted text-xs font-normal">
+          …べつに褒めてないけど？
+        </span>
+      </span>
     </p>
   );
 }
@@ -364,59 +375,64 @@ function GenerateProgress() {
   );
 
   return (
-    <div className="border-line bg-surface flex flex-col gap-3 rounded-sm border p-4">
-      <div className="flex items-center justify-between gap-3">
-        <p
-          role="status"
-          className="flex items-center gap-2 font-semibold whitespace-nowrap"
-        >
-          <span className="text-accent">
-            <Spinner />
-          </span>
-          {STEPS[current].label}
-        </p>
-        <p className="font-display text-muted text-sm whitespace-nowrap tabular-nums">
-          <span className="sr-only">経過時間 </span>
-          {formatElapsed(elapsed)}
-        </p>
+    <div className="flex flex-col gap-3">
+      <MascotLine expression="smug" size={88} bob>
+        …で、板書は撮ったんでしょうね
+      </MascotLine>
+      <div className="border-line bg-surface flex flex-col gap-3 rounded-sm border p-4">
+        <div className="flex items-center justify-between gap-3">
+          <p
+            role="status"
+            className="flex items-center gap-2 font-semibold whitespace-nowrap"
+          >
+            <span className="text-accent">
+              <Spinner />
+            </span>
+            {STEPS[current].label}
+          </p>
+          <p className="font-display text-muted text-sm whitespace-nowrap tabular-nums">
+            <span className="sr-only">経過時間 </span>
+            {formatElapsed(elapsed)}
+          </p>
+        </div>
+
+        <ol className="grid grid-cols-3 gap-1.5" aria-label="進み具合（目安）">
+          {STEPS.map((step, i) => {
+            const state = i < current ? "done" : i === current ? "now" : "next";
+            return (
+              <li
+                key={step.short}
+                aria-current={state === "now" ? "step" : undefined}
+                className={`flex flex-col gap-1.5 text-xs transition-colors ${
+                  state === "next" ? "text-muted" : "text-foreground"
+                }`}
+              >
+                <span className="bg-line relative h-1 overflow-hidden rounded-sm">
+                  {state === "done" && (
+                    <span className="bg-accent absolute inset-0" />
+                  )}
+                  {state === "now" && (
+                    <span
+                      aria-hidden
+                      className="bg-accent absolute inset-0 origin-left"
+                      style={{
+                        animation: "bar 1600ms ease-out infinite alternate",
+                      }}
+                    />
+                  )}
+                </span>
+                {step.short}
+              </li>
+            );
+          })}
+        </ol>
+
+        {elapsed >= SLOW_AFTER && (
+          <p className="text-muted text-xs [word-break:auto-phrase]">
+            時間がかかっています。この画面のまま、もう少しお待ちください
+          </p>
+        )}
       </div>
-
-      <ol className="grid grid-cols-3 gap-1.5" aria-label="進み具合（目安）">
-        {STEPS.map((step, i) => {
-          const state = i < current ? "done" : i === current ? "now" : "next";
-          return (
-            <li
-              key={step.short}
-              aria-current={state === "now" ? "step" : undefined}
-              className={`flex flex-col gap-1.5 text-xs transition-colors ${
-                state === "next" ? "text-muted" : "text-foreground"
-              }`}
-            >
-              <span className="bg-line relative h-1 overflow-hidden rounded-sm">
-                {state === "done" && (
-                  <span className="bg-accent absolute inset-0" />
-                )}
-                {state === "now" && (
-                  <span
-                    aria-hidden
-                    className="bg-accent absolute inset-0 origin-left"
-                    style={{
-                      animation: "bar 1600ms ease-out infinite alternate",
-                    }}
-                  />
-                )}
-              </span>
-              {step.short}
-            </li>
-          );
-        })}
-      </ol>
-
-      {elapsed >= SLOW_AFTER && (
-        <p className="text-muted text-xs [word-break:auto-phrase]">
-          時間がかかっています。この画面のまま、もう少しお待ちください
-        </p>
-      )}
     </div>
   );
 }

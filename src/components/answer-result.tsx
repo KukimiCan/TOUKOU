@@ -13,6 +13,7 @@ import { useEffect, useRef } from "react";
 
 import type { AnswerResult } from "@/contracts/questions";
 
+import { MascotLine } from "./mascot-line";
 import { CHOICE_LABELS } from "./question-format";
 import { RichText } from "./math";
 
@@ -94,6 +95,16 @@ export function AnswerResultView({ result }: { result: AnswerResult }) {
           </p>
         )}
       </div>
+
+      <MascotLine
+        expression={result.correct ? "praise" : "tease"}
+        size={48}
+        className="text-xs"
+      >
+        {result.correct
+          ? "…正解とか。べつに褒めてないけど？"
+          : "あれ、そっち選んじゃった？"}
+      </MascotLine>
 
       <section className="border-accent/50 flex min-h-0 flex-col gap-0.5 border-l-2 pl-3">
         <h3 className="text-muted text-xs font-semibold">解説</h3>

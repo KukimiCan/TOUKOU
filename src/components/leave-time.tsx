@@ -3,7 +3,9 @@
 // 移動を始める時刻（leaveAt）を過ぎたら、帯を失敗の色（text-danger）に変え、太字で急ぐよう伝える。
 // 時計（use-class-clock.ts）は次の授業カードが持ち、いまの時刻を受け取る。
 // ホームを開いたまま移動の時刻を過ぎたら、自動で表示が切り替わる。
-import { Footprints, TriangleAlert } from "lucide-react";
+import { Footprints } from "lucide-react";
+
+import { Mascot } from "./mascot";
 
 // "2026-11-04T12:10:00+09:00" → "12:10"（日本時間に固定。next-class-card.tsx と同じ）
 const timeFormat = new Intl.DateTimeFormat("ja-JP", {
@@ -34,7 +36,7 @@ export function LeaveTime({ leaveAt, now }: Props) {
           className="bg-danger/10 text-danger flex items-center justify-between gap-3 px-5 py-4"
         >
           <span className="flex items-center gap-2 text-lg font-bold whitespace-nowrap">
-            <TriangleAlert aria-hidden className="size-5 shrink-0" />
+            <Mascot expression="panic" size={48} decorative className="-my-2" />
             急ごう！
           </span>
           <span className="text-sm font-semibold whitespace-nowrap">
