@@ -1,5 +1,6 @@
 // back 担当のファイル。
 // 共有された問題への回答（POST）。ログインは要らない。
+// ログイン中なら、誰が答えたかも保存する（履歴は GET /api/answers/history）。
 // 回答を DB に保存し、正誤と解説を返す（DB の関数 answer_shared_question）。選択肢の数を超える番号は 400。
 // 公開していない問題や無い shareId は 404。
 // 同じ送信元が同じ問題に短い間に何度も送ったら 429（回数と数え方は answer-rate-limit.ts）。
@@ -10,6 +11,7 @@ import {
   answerResultResponseSchema,
   submitAnswerSchema,
 } from "@/contracts/questions";
+import { getUserId } from "@/features/auth/get-user-id";
 import {
   answerSource,
   checkAnswerRate,
@@ -65,7 +67,12 @@ export async function POST(request: Request, { params }: Context) {
 
   // 保存と正誤の判定は DB が行う。確かめたあとで公開をやめた問題は 404
   try {
-    const result = await answerSharedQuestion(shareId, choiceIndex);
+    const result = await answerSharedQuestion(
+      shareId,
+      choiceIndex,
+      // 履歴に残すため、ログイン中ならサーバーで確かめた ID を渡す（利用者が送った値は使わない）
+      await getUserId(),
+    );
     if (!result) {
       return Response.json({ error: "問題が見つかりません" }, { status: 404 });
     }

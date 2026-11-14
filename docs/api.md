@@ -22,6 +22,7 @@ API を追加・変更したら、この表も同じ PR で更新してくださ
 | 🚧   | POST           | `/api/questions/[id]/publish`   | 問題を公開して共有 URL を発行                                           | `questions.ts` |
 | 🚧   | GET            | `/api/shared/[shareId]`         | 共有された問題を取得（ログイン不要）                                    | `questions.ts` |
 | 🚧   | POST           | `/api/shared/[shareId]/answers` | 共有された問題に回答（ログイン不要。連投は 429）                        | `questions.ts` |
+| 🚧   | GET            | `/api/answers/history`          | 自分が解いた共有問題の履歴（新しい順に最大 100 件。未ログインは 401）   | `history.ts`   |
 
 予定の API は仮決めです。担当者が issue で決めて変えてかまいません。
 

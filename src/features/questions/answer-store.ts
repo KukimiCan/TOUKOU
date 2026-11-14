@@ -9,15 +9,18 @@ import { createAnswerClient } from "@/lib/supabase/answer";
 // DB が「選択肢の番号が範囲外」と返したときのエラー
 export class InvalidChoiceError extends Error {}
 
-// 回答を保存して、正誤と解説を返す。公開していない問題や、無い shareId は null
+// 回答を保存して、正誤と解説を返す。公開していない問題や、無い shareId は null。
+// answererId は、サーバーでログインを確かめた ID（ログインしていなければ null）。履歴に使う
 export async function answerSharedQuestion(
   shareId: string,
   choiceIndex: number,
+  answererId: string | null,
 ): Promise<AnswerResult | null> {
   const supabase = createAnswerClient();
   const { data, error } = await supabase.rpc("answer_shared_question", {
     target_share_id: shareId,
     target_choice_index: choiceIndex,
+    answerer_id: answererId,
   });
   // 22023 は、DB の関数が選択肢の番号を範囲外と判断したときのコード
   if (error?.code === "22023") throw new InvalidChoiceError(error.message);
