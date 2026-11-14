@@ -10,7 +10,6 @@
 
 import {
   CircleAlert,
-  CircleCheck,
   ExternalLink,
   ImageOff,
   ListChecks,
