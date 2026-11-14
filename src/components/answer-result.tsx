@@ -14,6 +14,7 @@ import { useEffect, useRef } from "react";
 import type { AnswerResult } from "@/contracts/questions";
 
 import { CHOICE_LABELS } from "./question-format";
+import { RichText } from "./math";
 
 type MarkTone = "plain" | "selected" | "correct" | "wrong";
 
@@ -96,9 +97,9 @@ export function AnswerResultView({ result }: { result: AnswerResult }) {
 
       <section className="border-accent/50 flex min-h-0 flex-col gap-0.5 border-l-2 pl-3">
         <h3 className="text-muted text-xs font-semibold">解説</h3>
-        <p className="max-h-[24dvh] overflow-y-auto overscroll-contain text-sm leading-relaxed [word-break:auto-phrase]">
-          {result.explanation}
-        </p>
+        <div className="max-h-[24dvh] overflow-y-auto overscroll-contain text-sm leading-relaxed [word-break:auto-phrase]">
+          <RichText text={result.explanation} />
+        </div>
       </section>
 
       <p className="text-muted text-xs [word-break:auto-phrase]">
