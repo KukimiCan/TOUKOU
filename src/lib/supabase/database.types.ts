@@ -228,6 +228,13 @@ export type Database = {
           is_correct: boolean;
         }[];
       };
+      consume_ai_generation_slot: {
+        Args: never;
+        Returns: {
+          allowed: boolean;
+          retry_after_seconds: number;
+        }[];
+      };
       get_shared_question: {
         Args: { target_share_id: string };
         Returns: {
