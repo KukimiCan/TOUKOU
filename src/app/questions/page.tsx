@@ -3,7 +3,12 @@
 // 読み込みと表示は questions-screen.tsx（ブラウザで動く部品）が行う。画面は端末の高さに収める。
 import type { Metadata } from "next";
 
-import { QuestionsScreen } from "@/components/questions-screen";
+import { Suspense } from "react";
+
+import {
+  QuestionsLoadingScreen,
+  QuestionsScreen,
+} from "@/components/questions-screen";
 
 export const metadata: Metadata = {
   title: "問題 | TOUKOU",
@@ -12,7 +17,10 @@ export const metadata: Metadata = {
 export default function QuestionsPage() {
   return (
     <main className="flex min-h-0 flex-1 flex-col">
-      <QuestionsScreen />
+      {/* 検索パラメータ（?course=）を読むため Suspense で包む */}
+      <Suspense fallback={<QuestionsLoadingScreen />}>
+        <QuestionsScreen />
+      </Suspense>
     </main>
   );
 }

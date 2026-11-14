@@ -9,7 +9,7 @@
 
 import { Check, FileText, Globe, ListChecks, Lock } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import {
   type Question,
@@ -30,7 +30,13 @@ import { Modal } from "./ui/modal";
 import { Screen, ScrollArea } from "./ui/screen";
 
 type Props = {
+  // 表示する問題（科目で絞った後のもの）
   questions: Question[];
+  // 科目の名前（見出し）と、科目の一覧へ戻るリンク
+  title: string;
+  label: ReactNode;
+  // 公開できたとき。公開の状態は、科目の一覧の画面が持つ（戻っても残る）
+  onPublished: (id: string, shareId: string) => void;
 };
 
 // 問題を公開して、共有 URL に使う ID（shareId）を受け取る。何度押しても同じ ID が返る
@@ -42,8 +48,12 @@ async function publish(id: string): Promise<{ shareId: string }> {
   return publishQuestionResponseSchema.parse(await res.json());
 }
 
-export function QuestionReviewList({ questions: initial }: Props) {
-  const [questions, setQuestions] = useState(initial);
+export function QuestionReviewList({
+  questions,
+  title,
+  label,
+  onPublished,
+}: Props) {
   // Modal で開いている問題。閉じる動きの間も中身を残すため、開いているかは別に持つ
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -53,20 +63,15 @@ export function QuestionReviewList({ questions: initial }: Props) {
     setOpen(true);
   }
 
-  function handlePublished(id: string, shareId: string) {
-    setQuestions((qs) =>
-      qs.map((q) => (q.id === id ? { ...q, isPublic: true, shareId } : q)),
-    );
-  }
-
   const publicCount = questions.filter((q) => q.isPublic).length;
   const selectedIndex = questions.findIndex((q) => q.id === selectedId);
   const selected = selectedIndex >= 0 ? questions[selectedIndex] : null;
 
   return (
     <Screen
-      label="Questions"
-      title="問題"
+      label={label}
+      labelStyle="ja"
+      title={title}
       actions={
         questions.length > 0 && (
           <p className="text-muted text-sm whitespace-nowrap">
@@ -108,7 +113,7 @@ export function QuestionReviewList({ questions: initial }: Props) {
           onClose={() => setOpen(false)}
           question={selected}
           number={selectedIndex + 1}
-          onPublished={(shareId) => handlePublished(selected.id, shareId)}
+          onPublished={(shareId) => onPublished(selected.id, shareId)}
         />
       )}
     </Screen>
@@ -116,7 +121,7 @@ export function QuestionReviewList({ questions: initial }: Props) {
 }
 
 // 問題が 1 つも無いとき。問題は資料の画面で作るので、そこへの導線を出す
-function EmptyQuestions() {
+export function EmptyQuestions() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 pb-8 text-center">
       <span className="bg-accent-soft text-accent flex size-12 items-center justify-center rounded-full">
