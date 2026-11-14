@@ -37,6 +37,7 @@ TOUKOU の画面の見た目と動きの決まりです。新しい画面を作�
 
 - 本文と見出し：Zen Kaku Gothic New（`font-sans`、既定）
 - ラベル・数字・英字：Barlow Condensed（`font-display`）。数字は `tabular-nums`
+- 数式・コード・URL：等幅の書体（`font-mono`）
 - 見出しは画面の主役を食わない大きさにする（ページの見出しは `text-2xl` まで）
 - 単語や文節の途中で改行させない。日本語の段落には `[word-break:auto-phrase]` を付ける。ボタンやラベルは `whitespace-nowrap`
 
@@ -54,6 +55,9 @@ TOUKOU の画面の見た目と動きの決まりです。新しい画面を作�
   - `ghost`：目立たせない操作
   - `danger`：削除など
   - 処理中は `loading` を渡す（回る印が出て、二度押しできなくなる）
+- 画面を移動するボタン：`src/components/ui/button-link.tsx` の `ButtonLink` を使う（リンクなので、移動先が先読みされて速く開く）
+- `<label>` などをボタンの見た目にしたいとき：`button.tsx` の `buttonClass(variant)` を使う。同じクラスを手で書かない
+- 文中のリンク：スマホではリンクに 44px の最小の高さが付くので、`inline-flex items-center` を付けて行の高さを崩さない
 - 読み込み中の印：`src/components/ui/spinner.tsx` の `Spinner`
 - 画面の読み込み：各画面の `loading.tsx` が `PageSkeleton` を出す。画面の中の部分的な読み込みは、形の近い骨格（`.skeleton`）を出す
 
