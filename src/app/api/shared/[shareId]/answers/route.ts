@@ -1,6 +1,6 @@
 // back 担当のファイル。
 // 共有された問題への回答（POST）。ログインは要らない。
-// 回答を保存し、正誤と解説を返す。選択肢の数を超える番号は 400。
+// 回答を DB に保存し、正誤と解説を返す（DB の関数 answer_shared_question）。選択肢の数を超える番号は 400。
 // 公開していない問題や無い shareId は 404。
 // 同じ送信元が同じ問題に短い間に何度も送ったら 429（回数と数え方は answer-rate-limit.ts）。
 // 確認用: curl -X POST -H "Content-Type: application/json" -d '{"choiceIndex":1}' http://localhost:3000/api/shared/<shareId>/answers
@@ -14,8 +14,11 @@ import {
   answerSource,
   checkAnswerRate,
 } from "@/features/questions/answer-rate-limit";
-import { answerResultFor, saveAnswer } from "@/features/questions/answer-store";
-import { findSharedQuestion } from "@/features/questions/question-store";
+import {
+  InvalidChoiceError,
+  answerSharedQuestion,
+} from "@/features/questions/answer-store";
+import { getSharedQuestion } from "@/features/questions/question-store";
 
 type Context = { params: Promise<{ shareId: string }> };
 
@@ -23,7 +26,7 @@ export async function POST(request: Request, { params }: Context) {
   await connection();
 
   const { shareId } = await params;
-  const question = findSharedQuestion(shareId);
+  const question = await getSharedQuestion(shareId);
   if (!question) {
     return Response.json({ error: "問題が見つかりません" }, { status: 404 });
   }
@@ -60,7 +63,20 @@ export async function POST(request: Request, { params }: Context) {
     );
   }
 
-  const result = answerResultFor(question, choiceIndex);
-  saveAnswer(shareId, choiceIndex, result.correct);
-  return Response.json(answerResultResponseSchema.parse({ result }));
+  // 保存と正誤の判定は DB が行う。確かめたあとで公開をやめた問題は 404
+  try {
+    const result = await answerSharedQuestion(shareId, choiceIndex);
+    if (!result) {
+      return Response.json({ error: "問題が見つかりません" }, { status: 404 });
+    }
+    return Response.json(answerResultResponseSchema.parse({ result }));
+  } catch (error) {
+    if (error instanceof InvalidChoiceError) {
+      return Response.json(
+        { error: "選択肢の番号が範囲外です" },
+        { status: 400 },
+      );
+    }
+    throw error;
+  }
 }

@@ -1,35 +1,33 @@
 // back 担当のファイル。
-// 回答の保存先（仮）。DB の answers テーブル（issue #32）ができるまで、メモリに保存する。
-// 共有ページはログインが要らないので、回答は誰が送ったかを分けずに問題ごとに溜める。
+// 共有された問題への回答の保存先。DB の answers テーブルに保存する。
+// ログインしていない人は questions も answers も直接は読めないので、共有 ID と選んだ番号を
+// DB の関数 answer_shared_question に渡し、保存と正誤・解説の受け取りを 1 回で行う（#157）。
+// 正誤は DB が決める（answers のトリガー）。
 import type { AnswerResult } from "@/contracts/questions";
+import { createClient } from "@/lib/supabase/server";
 
-type StoredAnswer = { shareId: string; choiceIndex: number; correct: boolean };
+// DB が「選択肢の番号が範囲外」と返したときのエラー
+export class InvalidChoiceError extends Error {}
 
-// 溜める回答の数の上限。超えたら古いものから捨てる（メモリが増え続けないように。#154）。
-// 連投そのものは、保存の前に route が answer-rate-limit.ts で止める
-const MAX_STORED_ANSWERS = 10_000;
-
-const answers: StoredAnswer[] = [];
-
-export function saveAnswer(
+// 回答を保存して、正誤と解説を返す。公開していない問題や、無い shareId は null
+export async function answerSharedQuestion(
   shareId: string,
   choiceIndex: number,
-  correct: boolean,
-): void {
-  answers.push({ shareId, choiceIndex, correct });
-  if (answers.length > MAX_STORED_ANSWERS) {
-    answers.splice(0, answers.length - MAX_STORED_ANSWERS);
-  }
-}
+): Promise<AnswerResult | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("answer_shared_question", {
+    target_share_id: shareId,
+    target_choice_index: choiceIndex,
+  });
+  // 22023 は、DB の関数が選択肢の番号を範囲外と判断したときのコード
+  if (error?.code === "22023") throw new InvalidChoiceError(error.message);
+  if (error) throw error;
 
-// 正誤と解説を作る。問題の正解は呼び出し側から渡す（この関数は保存だけ）
-export function answerResultFor(
-  question: { answerIndex: number; explanation: string },
-  choiceIndex: number,
-): AnswerResult {
+  const row = data[0];
+  if (!row) return null;
   return {
-    correct: choiceIndex === question.answerIndex,
-    correctIndex: question.answerIndex,
-    explanation: question.explanation,
+    correct: row.is_correct,
+    correctIndex: row.correct_index,
+    explanation: row.explanation,
   };
 }
