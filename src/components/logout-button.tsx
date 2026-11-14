@@ -3,10 +3,12 @@
 // 画面から Supabase を直接呼ばない。/login と共有ページ（/q/...）では表示しない。
 "use client";
 
+import { LogOut } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { ApiError, fetchApi } from "@/components/fetch-api";
+import { Spinner } from "@/components/ui/spinner";
 import { logoutResponseSchema } from "@/contracts/auth";
 
 export function LogoutButton() {
@@ -38,7 +40,10 @@ export function LogoutButton() {
   return (
     <div className="flex items-center gap-2 text-sm">
       {error && (
-        <span role="alert" className="rounded bg-red-50 px-2 py-1 text-red-700">
+        <span
+          role="alert"
+          className="bg-danger/10 text-danger rounded-sm px-2 py-1 text-xs"
+        >
           {error}
         </span>
       )}
@@ -46,9 +51,11 @@ export function LogoutButton() {
         type="button"
         onClick={onLogout}
         disabled={busy}
-        className="border-line text-muted hover:border-foreground hover:text-foreground rounded-sm border px-3 py-1.5 whitespace-nowrap transition-colors disabled:opacity-50"
+        aria-label="ログアウト"
+        className="border-line text-muted hover:border-foreground hover:text-foreground inline-flex items-center gap-1.5 rounded-sm border px-3 py-1.5 whitespace-nowrap transition-colors"
       >
-        ログアウト
+        {busy ? <Spinner /> : <LogOut aria-hidden className="size-4" />}
+        <span className="hidden sm:inline">ログアウト</span>
       </button>
     </div>
   );

@@ -6,17 +6,24 @@
 // ログイン画面と共有ページ（/q/...）では出さない。
 "use client";
 
+import {
+  BookOpenText,
+  CalendarDays,
+  House,
+  ListChecks,
+  type LucideIcon,
+} from "lucide-react";
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 
 import { LogoutButton } from "@/components/logout-button";
 
-const items = [
-  { href: "/", label: "ホーム" },
-  { href: "/timetable", label: "時間割" },
-  { href: "/materials", label: "資料" },
-  { href: "/questions", label: "問題" },
-] as const;
+const items: { href: string; label: string; Icon: LucideIcon }[] = [
+  { href: "/", label: "ホーム", Icon: House },
+  { href: "/timetable", label: "時間割", Icon: CalendarDays },
+  { href: "/materials", label: "資料", Icon: BookOpenText },
+  { href: "/questions", label: "問題", Icon: ListChecks },
+];
 
 // 移動の途中に、リンクの端に細い線を出す
 function PendingLine() {
@@ -55,17 +62,18 @@ export function SiteNav() {
           {/* 広い画面だけ、上の段に項目を並べる */}
           <nav aria-label="主なページ" className="hidden flex-1 sm:block">
             <ul className="flex items-center gap-1 text-sm">
-              {items.map(({ href, label }) => (
+              {items.map(({ href, label, Icon }) => (
                 <li key={href}>
                   <Link
                     href={href}
                     aria-current={isActive(href) ? "page" : undefined}
-                    className={`relative block px-3 py-2 whitespace-nowrap transition-colors ${
+                    className={`relative flex items-center gap-1.5 px-3 py-2 whitespace-nowrap transition-colors ${
                       isActive(href)
                         ? "text-foreground font-bold"
                         : "text-muted hover:text-foreground"
                     }`}
                   >
+                    <Icon aria-hidden className="size-4" />
                     {label}
                     <PendingLine />
                   </Link>
@@ -86,17 +94,22 @@ export function SiteNav() {
         className="border-line bg-background/95 fixed inset-x-0 bottom-0 z-20 border-t pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden"
       >
         <ul className="mx-auto grid max-w-md grid-cols-4">
-          {items.map(({ href, label }) => (
+          {items.map(({ href, label, Icon }) => (
             <li key={href}>
               <Link
                 href={href}
                 aria-current={isActive(href) ? "page" : undefined}
-                className={`relative flex min-h-14 items-center justify-center text-sm transition-colors ${
+                className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-[0.7rem] transition-colors ${
                   isActive(href)
                     ? "text-foreground font-bold"
                     : "text-muted active:text-foreground"
                 }`}
               >
+                <Icon
+                  aria-hidden
+                  className="size-5"
+                  strokeWidth={isActive(href) ? 2.25 : 1.75}
+                />
                 {label}
                 <PendingLine />
               </Link>
