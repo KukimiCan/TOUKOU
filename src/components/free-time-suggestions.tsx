@@ -11,7 +11,7 @@ import { useState } from "react";
 
 import type { FreeTimeSuggestion } from "@/contracts/home";
 
-import { SuggestionRow } from "./suggestion-chip";
+import { SuggestionRow } from "./suggestion-row";
 import { Modal } from "./ui/modal";
 import { useClassClock } from "./use-class-clock";
 

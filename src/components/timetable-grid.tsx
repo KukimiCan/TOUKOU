@@ -203,8 +203,8 @@ function CourseCell({
 }) {
   // 教室が無いときは、建物を出す
   const place = course.room ?? course.building;
-  // マスの幅（100cqi）の半分を文字の大きさの上限にして、最低 2 文字を 1 行に収める
-  const fontSize = "min(0.8125rem, calc((100cqi - 0.5rem) / 2))";
+  // マスの幅（100cqi）の半分を文字の大きさの目安にして、2 文字を 1 行に収める。大きさは 11px〜12px（text-xs）の範囲に収める
+  const fontSize = "clamp(0.6875rem, calc((100cqi - 0.5rem) / 2), 0.75rem)";
   // 強調中は、琥珀で塗る（少しの間だけ。外したら、いつもの淡い色に戻る）
   const className = `flex size-full min-h-0! flex-col gap-0.5 overflow-hidden rounded-sm border-l-2 px-1 py-0.5 text-left leading-[1.2] transition-colors ${
     highlighted
@@ -215,7 +215,7 @@ function CourseCell({
     <>
       {/* 科目名の行数は、マスの高さで決める（途中で切れた行を見せない）。行の長さはそろえ、1 文字だけの行を作らない */}
       <span
-        className="line-clamp-1 font-bold text-balance [overflow-wrap:anywhere] [@container(min-height:3.3rem)]:line-clamp-2 [@container(min-height:4.3rem)]:line-clamp-3 [@container(min-height:5.3rem)]:line-clamp-4"
+        className="line-clamp-1 font-bold text-balance [overflow-wrap:anywhere] [word-break:auto-phrase] [@container(min-height:3.3rem)]:line-clamp-2 [@container(min-height:4.3rem)]:line-clamp-3 [@container(min-height:5.3rem)]:line-clamp-4"
         style={{ fontSize }}
       >
         {course.name}

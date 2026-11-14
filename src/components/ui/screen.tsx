@@ -5,8 +5,10 @@
 import type { ReactNode } from "react";
 
 type Props = {
-  // 見出しの上の小さな英字のラベル（例：TODAY）
-  label?: string;
+  // 見出しの上の小さなラベル（例：TODAY）。文字でも、部品（日付など）も渡せる
+  label?: ReactNode;
+  // ラベルの見た目。en は英字の小見出し（大文字・字間を広げる）、ja は日本語の補足（小さく、大文字にしない）
+  labelStyle?: "en" | "ja";
   title: string;
   // 見出しを読み上げだけにする（ナビと重複して見た目には要らないとき）
   hideTitle?: boolean;
@@ -22,6 +24,7 @@ export function Screen({
   hideTitle = false,
   actions,
   width = "max-w-xl",
+  labelStyle = "en",
   children,
 }: Props) {
   return (
@@ -31,7 +34,13 @@ export function Screen({
       <header className="flex shrink-0 items-end justify-between gap-3">
         <div className="min-w-0">
           {label && (
-            <p className="font-display text-muted text-xs tracking-[0.2em] uppercase">
+            <p
+              className={
+                labelStyle === "en"
+                  ? "font-display text-muted text-xs tracking-[0.2em] uppercase"
+                  : "text-muted text-xs tabular-nums"
+              }
+            >
               {label}
             </p>
           )}
