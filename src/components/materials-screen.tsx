@@ -20,6 +20,7 @@ import { BoardUpload } from "./board-upload";
 import { fetchApi } from "./fetch-api";
 import { LoadError } from "./load-error";
 import { MaterialsList } from "./materials-list";
+import { Mascot } from "./mascot";
 import {
   BackToCourses,
   buildCourseEntries,
@@ -206,6 +207,9 @@ export function MaterialsSkeleton() {
     >
       <div role="status" aria-live="polite" className="flex flex-col gap-3">
         <span className="sr-only">資料を読み込んでいます</span>
+        <div aria-hidden className="flex shrink-0 justify-center">
+          <Mascot expression="smug" bob size={72} decorative />
+        </div>
         <div className="divide-line border-line flex flex-col divide-y border-y">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="flex items-center gap-3 py-3.5">
