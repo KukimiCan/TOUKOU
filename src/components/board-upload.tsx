@@ -7,6 +7,7 @@
 // 失敗したときは、理由（形式・大きさ・通信）を見出しで分けて出す。
 "use client";
 
+import { appNow } from "@/lib/app-clock";
 import { Camera, CircleAlert, ImagePlus, RotateCcw, Send } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -196,7 +197,7 @@ export function BoardUpload({
     if (!open) {
       const next = defaultCourseId
         ? { courseId: defaultCourseId, reason: null }
-        : suggestCourse(courses, settings, new Date());
+        : suggestCourse(courses, settings, appNow());
       setSuggestion(next);
       setCourseId(next?.courseId ?? "");
     }

@@ -12,6 +12,7 @@
 // 保存できたことの知らせ（SavedNotice）は、設定の保存（timetable-screen.tsx）でも使う。
 "use client";
 
+import { appNow } from "@/lib/app-clock";
 import {
   CalendarPlus,
   Check,
@@ -87,7 +88,7 @@ export function TimetableEditor({
   const [showAll, setShowAll] = useState(false);
   const [notice, showNotice] = useSavedNotice();
   // 今日の曜日（表の列を塗る）。この部品はブラウザで読み込みが終わってから出るので、端末の時刻を使える
-  const [today] = useState(() => DAYS_BY_GET_DAY[new Date().getDay()]);
+  const [today] = useState(() => DAYS_BY_GET_DAY[appNow().getDay()]);
 
   // 強調は少し経ったら外す
   useEffect(() => {

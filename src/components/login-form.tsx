@@ -26,6 +26,8 @@ function toMessage(error: unknown): string {
         return "メールアドレスとパスワードを確かめてください。";
       case 401:
         return "メールアドレスかパスワードが違います。";
+      case 403:
+        return "体験期間は終わりました。";
     }
   }
   return "ログインできませんでした。時間をおいてもう一度試してください。";

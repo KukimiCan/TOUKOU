@@ -13,6 +13,7 @@
 // - 別のタブやアプリから戻ってきたとき（スマホでは、画面を消している間タイマーが止まることがあるため）
 "use client";
 
+import { appNowMs } from "@/lib/app-clock";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { homeResponseSchema, type HomeResponse } from "@/contracts/home";
@@ -89,7 +90,7 @@ export function HomeContent() {
   useEffect(() => {
     const endsAt = home?.nextClass?.endsAt;
     if (!endsAt) return;
-    const remaining = new Date(endsAt).getTime() - Date.now();
+    const remaining = new Date(endsAt).getTime() - appNowMs();
     // 終了の 1 秒後に取り直す。端末とサーバーの時計のずれで同じ授業が返ってきたら、1 分後にもう一度
     const delay = remaining > 0 ? remaining + 1000 : 60_000;
     const timer = setTimeout(() => void load(), delay);

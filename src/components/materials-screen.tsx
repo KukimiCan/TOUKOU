@@ -8,6 +8,7 @@
 // - 読み込み中は、画面の形に近い骨格（MaterialsSkeleton）を出す。loading.tsx でも同じものを使う
 "use client";
 
+import { appNow } from "@/lib/app-clock";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -165,7 +166,7 @@ export function MaterialsScreen() {
   }
   const entries = buildCourseEntries(
     courses,
-    new Date(),
+    appNow(),
     (id) => counts.get(id) ?? 0,
     (n) => (n > 0 ? `資料 ${n}` : "資料なし"),
     { hideEmpty: false },

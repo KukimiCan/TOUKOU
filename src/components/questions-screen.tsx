@@ -7,6 +7,7 @@
 // - 読み込み中は、一覧の形に近い骨格を出す。読み込めなかったとき・ログインしていないときは、それぞれの表示を出す
 "use client";
 
+import { appNow } from "@/lib/app-clock";
 import { History } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -192,7 +193,7 @@ export function QuestionsScreen() {
   }
   const entries = buildCourseEntries(
     courses,
-    new Date(),
+    appNow(),
     (id) => counts.get(id) ?? 0,
     (n) => `問題 ${n}`,
     { hideEmpty: true },

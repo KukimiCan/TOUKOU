@@ -8,6 +8,7 @@ import { loginRequestSchema, loginResponseSchema } from "@/contracts/auth";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createLoginClient } from "@/lib/supabase/login";
 import { createClient } from "@/lib/supabase/server";
+import { isTrialExpired } from "@/features/auth/trial";
 
 const noStore = { "Cache-Control": "private, no-store" };
 
@@ -49,6 +50,15 @@ export async function POST(request: Request) {
     return Response.json(
       { error: "メールアドレスかパスワードが違います" },
       { status: 401, headers: noStore },
+    );
+  }
+
+  // 期限を過ぎた体験用アカウントは、ログインさせない（#216）
+  if (isTrialExpired(data.user?.app_metadata)) {
+    if (!isVercel) await supabase.auth.signOut();
+    return Response.json(
+      { error: "体験期間は終わりました" },
+      { status: 403, headers: noStore },
     );
   }
 

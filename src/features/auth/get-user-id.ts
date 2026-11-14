@@ -8,12 +8,16 @@
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
+import { isTrialExpired } from "./trial";
+
 export async function getUserId(): Promise<string | null> {
   if (!hasSupabaseEnv()) return null;
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getClaims();
   if (error || !data?.claims.sub) return null;
+  // 期限を過ぎた体験用アカウントは、ログインしていない扱いにする（#216）
+  if (isTrialExpired(data.claims.app_metadata)) return null;
 
   return data.claims.sub;
 }
