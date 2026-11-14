@@ -1,15 +1,19 @@
 // front 担当のファイル。
-// 資料一覧の画面の中身（#69）。板書のアップロード欄（board-upload.tsx）と、資料一覧（materials-list.tsx）をまとめる。
-// - 開いたときに、資料（GET /api/materials）と科目（GET /api/courses）を API から読み込む
+// 資料一覧の画面（#69）。端末の高さに収め、縦にスクロールさせない（docs/design.md）。
+// - 見出しの右に「撮る」ボタン（board-upload.tsx）。撮ったら、モーダルで科目を確かめて送る
+// - 中身は資料の一覧（materials-list.tsx）。長い一覧は、一覧の中だけでスクロールする
+// - 開いたときに、資料（GET /api/materials）、科目（GET /api/courses）、時限の時刻（GET /api/settings）を読み込む。
+//   時限の時刻は、撮った板書の科目を「今の授業」「直前の授業」から選んでおくために使う（読めなくても送れる）
 // - 読み込み中は、画面の形に近い骨格（MaterialsSkeleton）を出す。loading.tsx でも同じものを使う
-// - 読み込めなかったとき・ログインしていないときは、それぞれの表示を出す
 "use client";
 
 import { useEffect, useState } from "react";
 
 import { type Course, coursesResponseSchema } from "@/contracts/courses";
 import { type Material, materialsResponseSchema } from "@/contracts/materials";
+import { type Settings, settingsResponseSchema } from "@/contracts/settings";
 
+import { Screen } from "./ui/screen";
 import { BoardUpload } from "./board-upload";
 import { fetchApi } from "./fetch-api";
 import { LoadError } from "./load-error";
@@ -18,20 +22,38 @@ import { MaterialsList } from "./materials-list";
 type Load =
   | { status: "loading" }
   | { status: "error"; error: unknown }
-  | { status: "ready"; materials: Material[]; courses: Course[] };
+  | {
+      status: "ready";
+      materials: Material[];
+      courses: Course[];
+      settings: Settings | null;
+    };
 
-// 資料と科目を同時に読み込む（科目は、科目名の表示と絞り込み・アップロード先の選択に使う）
+// 時限の時刻は、科目を選んでおくための補助。読めなくても画面は出す
+async function loadSettings() {
+  try {
+    const res = await fetchApi("/api/settings");
+    return settingsResponseSchema.parse(await res.json());
+  } catch {
+    return null;
+  }
+}
+
 async function loadMaterials() {
-  const [materialsRes, coursesRes] = await Promise.all([
+  const [materialsRes, coursesRes, settings] = await Promise.all([
     fetchApi("/api/materials"),
     fetchApi("/api/courses"),
+    loadSettings(),
   ]);
   const { materials } = materialsResponseSchema.parse(
     await materialsRes.json(),
   );
   const { courses } = coursesResponseSchema.parse(await coursesRes.json());
-  return { materials, courses };
+  return { materials, courses, settings };
 }
+
+const LABEL = "Materials";
+const TITLE = "資料";
 
 export function MaterialsScreen() {
   const [load, setLoad] = useState<Load>({ status: "loading" });
@@ -62,43 +84,67 @@ export function MaterialsScreen() {
 
   if (load.status === "error") {
     return (
-      <LoadError
-        error={load.error}
-        title="資料を読み込めませんでした"
-        loginMessage="ログインすると、板書を追加したり、資料を確認したりできます。"
-        onRetry={retry}
-      />
+      <Screen label={LABEL} title={TITLE} width="max-w-3xl">
+        <LoadError
+          error={load.error}
+          title="資料を読み込めませんでした"
+          loginMessage="ログインすると、板書を追加したり、資料を確認したりできます。"
+          onRetry={retry}
+        />
+      </Screen>
     );
   }
 
+  const { materials, courses, settings } = load;
+  const canUpload = courses.length > 0;
+
   return (
-    <>
-      <BoardUpload courses={load.courses} />
-      <MaterialsList materials={load.materials} courses={load.courses} />
-    </>
+    <Screen
+      label={LABEL}
+      title={TITLE}
+      width="max-w-3xl"
+      // 資料が無いときは、画面の真ん中に同じ操作を大きく出すので、見出しの右には出さない
+      actions={
+        canUpload &&
+        materials.length > 0 && (
+          <BoardUpload courses={courses} settings={settings} place="header" />
+        )
+      }
+    >
+      <MaterialsList
+        materials={materials}
+        courses={courses}
+        emptyAction={
+          canUpload ? (
+            <BoardUpload courses={courses} settings={settings} place="empty" />
+          ) : null
+        }
+      />
+    </Screen>
   );
 }
 
-// 読み込み中の骨格。上に板書の追加欄、下に資料の行を 3 つ
+// 読み込み中の骨格。見出し（本物と同じ）、絞り込み、資料の行
 export function MaterialsSkeleton() {
   return (
-    <div role="status" aria-live="polite" className="flex flex-col gap-8">
-      <span className="sr-only">資料を読み込んでいます</span>
-      <div className="border-line flex flex-col gap-4 rounded-sm border p-4">
-        <div className="skeleton h-5 w-28" />
+    <Screen
+      label={LABEL}
+      title={TITLE}
+      width="max-w-3xl"
+      actions={<div className="skeleton h-11 w-24" />}
+    >
+      <div role="status" aria-live="polite" className="flex flex-col gap-3">
+        <span className="sr-only">資料を読み込んでいます</span>
         <div className="flex gap-2">
-          <div className="skeleton h-11 flex-1" />
-          <div className="skeleton h-11 flex-1" />
+          <div className="skeleton h-11 w-16" />
+          <div className="skeleton h-11 w-24" />
+          <div className="skeleton h-11 w-28" />
         </div>
-      </div>
-      <div className="flex flex-col gap-3">
-        <div className="skeleton h-5 w-40" />
         <div className="divide-line border-line flex flex-col divide-y border-y">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="flex items-center gap-3 py-3">
-              <div className="skeleton size-9" />
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-3 py-3.5">
               <div className="flex flex-1 flex-col gap-1.5">
-                <div className="skeleton h-4 w-16" />
+                <div className="skeleton h-4 w-32" />
                 <div className="skeleton h-3 w-24" />
               </div>
               <div className="skeleton h-5 w-16" />
@@ -106,6 +152,6 @@ export function MaterialsSkeleton() {
           ))}
         </div>
       </div>
-    </div>
+    </Screen>
   );
 }

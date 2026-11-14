@@ -39,3 +39,8 @@ export function formatElapsed(seconds: number) {
   const s = seconds % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
+
+// 「1 次」「n 本」のように、数字・英字と後ろの日本語の間の空白で改行しないよう、改行しない空白に置き換える
+export function keepNumbersTogether(text: string) {
+  return text.replace(/([0-9A-Za-z]) (?=[^\s\x00-\x7F])/g, "$1\u00a0");
+}

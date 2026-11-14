@@ -1,26 +1,24 @@
 // front 担当のファイル。
-// 資料詳細の中身（#68）。上に元の画像、その下に AI の解説を並べる。
-// - 元の画像は押すと別のタブで大きく開ける（スマホでは指で拡大できる）。一時 URL が切れて出せないときは、読み込み直しを案内する
-// - 解説の前に「AI の解説は間違うことがあります」と出し、元の画像へ戻るリンクも付ける
-// - 解説がまだの資料には「解説と確認問題を作る」ボタンを出す。押すと API（POST /api/materials/[id]/generate）で作る（#69）
-// - 作っている間（数十秒〜数分）は、段階と経過時間を出す（GenerateProgress）。
-//   API から実際の進み具合は取れないので、段階は経過時間で切り替える「目安」であることを画面に書く
-// - 失敗したら、理由と「もう一度作る」ボタンを出す
+// 資料詳細の中身（#68）。端末の高さに収め、縦にスクロールさせない（docs/design.md）。
+// - 解説がまだのとき：元の画像を大きく出し、下に「解説と確認問題を作る」。作っている間は段階と経過時間、失敗したら理由とやり直し
+// - 解説があるとき：元の画像は見出しの右の小さな画像に畳み、解説をタブ（要約・用語・数式…）で切り替える。
+//   下に「確認問題を解く」を置き、次にやることを 1 つに絞る
+// - 広い画面（lg 以上）では、左に元の画像、右に解説を並べる
+// - 元の画像は押すとモーダルで大きく開き、そこから別のタブでも開ける（スマホで指で拡大するため）
+// - 板書を送った直後（autoGenerate）は、開いたらそのまま作り始める
 "use client";
 
 import {
-  Check,
-  ChevronRight,
   CircleAlert,
   CircleCheck,
   ExternalLink,
   ImageOff,
-  Info,
+  ListChecks,
+  Maximize2,
   RefreshCw,
   Sparkles,
 } from "lucide-react";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   type GenerateMaterialResponse,
@@ -28,7 +26,10 @@ import {
   type MaterialDetailResponse,
 } from "@/contracts/materials";
 
-import { Button } from "./ui/button";
+import { Button, buttonClass } from "./ui/button";
+import { ButtonLink } from "./ui/button-link";
+import { Modal } from "./ui/modal";
+import { Screen } from "./ui/screen";
 import { Spinner } from "./ui/spinner";
 import { type Explanation, ExplanationView } from "./explanation-view";
 import { errorMessage, fetchApi } from "./fetch-api";
@@ -41,6 +42,7 @@ import {
 type Props = {
   detail: MaterialDetailResponse;
   courseName: string;
+  autoGenerate: boolean;
 };
 
 // AI に解説と確認問題を作ってもらう。AI の返事を待つので、少し時間がかかる
@@ -52,201 +54,291 @@ async function generate(materialId: string): Promise<GenerateMaterialResponse> {
   return generateMaterialResponseSchema.parse(await res.json());
 }
 
-export function MaterialDetail({ detail, courseName }: Props) {
+export function MaterialDetail({ detail, courseName, autoGenerate }: Props) {
   const { material, imageUrl } = detail;
   const [explanation, setExplanation] = useState<Explanation | null>(
     detail.explanation,
   );
-  const [generating, setGenerating] = useState(false);
-  // 作った確認問題の数（作ったときだけ出す）
+  // 送った直後に開いたときは、最初から「作っています」にしておく（下の効果で作り始める）
+  const [generating, setGenerating] = useState(
+    autoGenerate && !detail.explanation,
+  );
+  // 作った確認問題の数（この画面で作ったときだけ出す）
   const [questionCount, setQuestionCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
+  const [imageOpen, setImageOpen] = useState(false);
+  // 自動で作り始めるのは 1 回だけ（開発時に効果が 2 回動いても、二重に作らない）
+  const autoStarted = useRef(false);
 
-  const kindLabel = MATERIAL_KIND_LABELS[material.kind];
+  const imageAlt = `${courseName}の${MATERIAL_KIND_LABELS[material.kind]}（元の画像）`;
 
-  async function handleGenerate() {
+  // 作る。失敗しても「作っています」のまま止まらないよう、最後に必ず戻す
+  function runGenerate() {
+    return generate(material.id)
+      .then((result) => {
+        setExplanation(result.explanation);
+        setQuestionCount(result.questionCount);
+      })
+      .catch((e: unknown) => setError(errorMessage(e)))
+      .finally(() => setGenerating(false));
+  }
+
+  function handleGenerate() {
     if (generating) return;
     setGenerating(true);
     setError(null);
-    // 失敗しても「作っています」のまま止まらないよう、最後に必ず戻す
-    try {
-      const result = await generate(material.id);
-      setExplanation(result.explanation);
-      setQuestionCount(result.questionCount);
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setGenerating(false);
-    }
+    void runGenerate();
   }
 
+  useEffect(() => {
+    if (!autoGenerate || autoStarted.current) return;
+    autoStarted.current = true;
+    // 読み込み直したときに、もう一度作り始めないよう URL から外す
+    window.history.replaceState(null, "", window.location.pathname);
+    if (!detail.explanation) void runGenerate();
+    // 開いたときに 1 回だけ動かす
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const openImage = () => setImageOpen(true);
+
   return (
-    <article className="flex flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl [word-break:auto-phrase]">{courseName}</h1>
-        <p className="text-muted flex flex-wrap items-center gap-x-2 text-sm">
-          <span>{kindLabel}</span>
-          <span aria-hidden>・</span>
-          <span className="font-display tabular-nums">
-            {formatCreatedAt(material.createdAt)}
-          </span>
-        </p>
-      </header>
+    <Screen
+      label={formatCreatedAt(material.createdAt)}
+      title={courseName}
+      width="max-w-5xl"
+      actions={
+        explanation && (
+          <Thumbnail
+            src={imageUrl}
+            failed={imageFailed}
+            onFail={() => setImageFailed(true)}
+            onOpen={openImage}
+          />
+        )
+      }
+    >
+      <div className="flex min-h-0 flex-1 flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:gap-8">
+        <ImagePane
+          src={imageUrl}
+          alt={imageAlt}
+          failed={imageFailed}
+          onFail={() => setImageFailed(true)}
+          onOpen={openImage}
+          // 解説があるスマホでは、見出しの右の小さな画像だけにする
+          className={explanation ? "hidden lg:flex" : "flex"}
+        />
 
-      <figure id="original" className="flex scroll-mt-20 flex-col gap-1.5">
-        {imageFailed ? (
-          <div className="border-line bg-surface flex flex-col items-center gap-3 rounded-sm border px-4 py-10 text-center">
-            <ImageOff
-              aria-hidden
-              className="text-muted size-8"
-              strokeWidth={1.5}
-            />
-            <p className="text-muted text-sm [word-break:auto-phrase]">
-              元の画像を表示できませんでした。画像のリンクは時間がたつと切れるので、画面を読み込み直してください。
-            </p>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => window.location.reload()}
-              icon={<RefreshCw aria-hidden className="size-4" />}
-              className="whitespace-nowrap"
-            >
-              読み込み直す
-            </Button>
-          </div>
-        ) : (
-          <>
-            <a
-              href={imageUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="border-line bg-surface hover:border-foreground block overflow-hidden rounded-sm border transition-colors"
-            >
-              {/* 画像の URL は API が毎回作る一時 URL なので、Next.js の <Image> ではなく普通の <img> を使う */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={imageUrl}
-                alt={`${courseName}の${kindLabel}（元の画像）`}
-                onError={() => setImageFailed(true)}
-                className="max-h-[50vh] w-full object-contain"
-              />
-            </a>
-            <figcaption className="text-muted flex items-center gap-1.5 text-xs">
-              <ExternalLink aria-hidden className="size-3.5 shrink-0" />
-              画像を押すと、別のタブで大きく開きます
-            </figcaption>
-          </>
-        )}
-      </figure>
-
-      <section
-        aria-labelledby="explanation-heading"
-        className="flex flex-col gap-5"
-      >
-        <h2
-          id="explanation-heading"
-          className="flex items-center gap-2 text-lg"
+        <section
+          aria-label="AI の解説"
+          className={`flex min-h-0 flex-col gap-3 ${explanation ? "flex-1" : "shrink-0 lg:justify-center"}`}
         >
-          <Sparkles aria-hidden className="text-accent size-4" />
-          AI の解説
-        </h2>
-
-        {explanation ? (
-          <div className="flex flex-col gap-5 transition-[opacity,translate] duration-300 starting:translate-y-1 starting:opacity-0">
-            {questionCount !== null && (
-              <div
-                role="status"
-                className="bg-success/10 text-success flex flex-wrap items-center gap-x-3 gap-y-1 rounded-sm px-3 py-2.5 text-sm"
+          {explanation ? (
+            <>
+              {questionCount !== null && <Done count={questionCount} />}
+              <ExplanationView
+                explanation={explanation}
+                onOpenImage={openImage}
+              />
+              <ButtonLink
+                href="/questions"
+                icon={<ListChecks aria-hidden className="size-4" />}
+                className="w-full shrink-0"
               >
-                <span className="flex items-center gap-2 font-semibold">
-                  <CircleCheck aria-hidden className="size-4 shrink-0" />
-                  {questionCount > 0
-                    ? `解説と、確認問題を ${questionCount} 問作りました`
-                    : "解説を作りました"}
-                </span>
-                {questionCount > 0 && (
-                  <Link
-                    href="/questions"
-                    className="text-foreground ml-auto inline-flex items-center gap-0.5 font-semibold whitespace-nowrap underline-offset-4 hover:underline"
-                  >
-                    問題を確かめる
-                    <ChevronRight aria-hidden className="size-4" />
-                  </Link>
-                )}
-              </div>
-            )}
-            <p
-              role="note"
-              className="border-accent bg-accent-soft flex gap-2 border-l-2 px-3 py-2.5 text-sm leading-relaxed"
+                確認問題を解く
+              </ButtonLink>
+            </>
+          ) : generating ? (
+            <GenerateProgress />
+          ) : error ? (
+            <div
+              role="alert"
+              className="bg-danger/10 flex flex-col gap-3 rounded-sm p-4"
             >
-              <Info aria-hidden className="text-accent mt-1 size-4 shrink-0" />
-              <span className="[word-break:auto-phrase]">
-                AI の解説は間違うことがあります。
-                <a
-                  href="#original"
-                  className="font-semibold underline underline-offset-4"
-                >
-                  元の画像
-                </a>
-                と見比べて確かめてください。
-              </span>
-            </p>
-            <ExplanationView explanation={explanation} />
-          </div>
-        ) : generating ? (
-          <GenerateProgress />
-        ) : error ? (
-          <div
-            role="alert"
-            className="bg-danger/10 flex flex-col items-start gap-3 rounded-sm p-4"
-          >
-            <div className="text-danger flex gap-2 text-sm">
-              <CircleAlert aria-hidden className="mt-1 size-4 shrink-0" />
-              <div className="flex flex-col">
-                <p className="font-semibold">解説を作れませんでした</p>
-                <p className="[word-break:auto-phrase]">{error}</p>
+              <div className="text-danger flex gap-2 text-sm">
+                <CircleAlert aria-hidden className="mt-1 size-4 shrink-0" />
+                <div className="flex flex-col">
+                  <p className="font-semibold">解説を作れませんでした</p>
+                  <p className="[word-break:auto-phrase]">{error}</p>
+                </div>
               </div>
+              <Button
+                type="button"
+                onClick={handleGenerate}
+                icon={<RefreshCw aria-hidden className="size-4" />}
+                className="w-full"
+              >
+                もう一度作る
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleGenerate}
-              icon={<RefreshCw aria-hidden className="size-4" />}
-              className="whitespace-nowrap"
-            >
-              もう一度作る
-            </Button>
-          </div>
-        ) : (
-          <div className="border-line bg-surface flex flex-col gap-4 rounded-sm border p-4">
-            <p className="text-sm leading-relaxed [word-break:auto-phrase]">
-              この資料の解説はまだありません。AI
-              が板書を読み取って、要約・用語・数式の解説と、確認問題を作ります。
-            </p>
+          ) : (
             <Button
               type="button"
               onClick={handleGenerate}
               icon={<Sparkles aria-hidden className="size-4" />}
-              className="w-full whitespace-nowrap"
+              className="w-full"
             >
               解説と確認問題を作る
             </Button>
-            <p className="text-muted text-center text-xs">
-              数十秒から数分かかります
-            </p>
-          </div>
+          )}
+        </section>
+      </div>
+
+      <Modal
+        open={imageOpen}
+        onClose={() => setImageOpen(false)}
+        title="元の画像"
+        footer={
+          <a
+            href={imageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonClass("secondary")}
+          >
+            <ExternalLink aria-hidden className="size-4" />
+            別のタブで開く
+          </a>
+        }
+      >
+        {imageFailed ? (
+          <ImageFailed />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element -- 画像の URL は API が毎回作る一時 URL なので、普通の <img> を使う
+          <img
+            src={imageUrl}
+            alt={imageAlt}
+            className="mx-auto max-h-[65dvh] w-full object-contain"
+          />
         )}
-      </section>
-    </article>
+      </Modal>
+    </Screen>
+  );
+}
+
+// 元の画像を大きく出す枠。押すとモーダルで開く
+function ImagePane({
+  src,
+  alt,
+  failed,
+  onFail,
+  onOpen,
+  className,
+}: {
+  src: string;
+  alt: string;
+  failed: boolean;
+  onFail: () => void;
+  onOpen: () => void;
+  className: string;
+}) {
+  if (failed) {
+    return (
+      <div
+        className={`border-line bg-surface min-h-0 flex-1 flex-col items-center justify-center rounded-sm border p-4 ${className}`}
+      >
+        <ImageFailed />
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label="元の画像を大きく見る"
+      className={`group border-line bg-surface hover:border-foreground relative min-h-0 flex-1 overflow-hidden rounded-sm border transition-colors ${className}`}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- 画像の URL は API が毎回作る一時 URL なので、普通の <img> を使う */}
+      <img
+        src={src}
+        alt={alt}
+        onError={onFail}
+        className="absolute inset-0 size-full object-contain"
+      />
+      <span className="border-line bg-surface text-muted group-hover:text-foreground absolute right-2 bottom-2 grid size-8 place-items-center rounded-sm border transition-colors">
+        <Maximize2 aria-hidden className="size-4" />
+      </span>
+    </button>
+  );
+}
+
+// 見出しの右に置く、元の画像の小さな表示（解説を読んでいるとき）
+function Thumbnail({
+  src,
+  failed,
+  onFail,
+  onOpen,
+}: {
+  src: string;
+  failed: boolean;
+  onFail: () => void;
+  onOpen: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label="元の画像を見る"
+      className="border-line bg-surface hover:border-foreground text-muted relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-sm border transition-colors lg:hidden"
+    >
+      {failed ? (
+        <ImageOff aria-hidden className="size-5" />
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element -- 画像の URL は API が毎回作る一時 URL なので、普通の <img> を使う
+        <img
+          src={src}
+          alt=""
+          onError={onFail}
+          className="absolute inset-0 size-full object-cover"
+        />
+      )}
+    </button>
+  );
+}
+
+// 一時 URL が切れて画像を出せないとき
+function ImageFailed() {
+  return (
+    <div className="flex flex-col items-center gap-3 py-6 text-center">
+      <ImageOff aria-hidden className="text-muted size-8" strokeWidth={1.5} />
+      <p className="text-muted text-sm [word-break:auto-phrase]">
+        画像のリンクが切れました。読み込み直してください
+      </p>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => window.location.reload()}
+        icon={<RefreshCw aria-hidden className="size-4" />}
+      >
+        読み込み直す
+      </Button>
+    </div>
+  );
+}
+
+// 作り終えたときの知らせ。少しだけ目立つ動きで出す
+function Done({ count }: { count: number }) {
+  return (
+    <p
+      role="status"
+      className="bg-success/10 text-success flex shrink-0 items-center gap-2 rounded-sm px-3 py-2 text-sm font-semibold transition-[opacity,translate] duration-300 starting:translate-y-1 starting:opacity-0"
+    >
+      <CircleCheck
+        aria-hidden
+        className="size-4 shrink-0 transition-transform delay-150 duration-300 starting:scale-0"
+      />
+      {count > 0
+        ? `解説と確認問題 ${count} 問ができました`
+        : "解説ができました"}
+    </p>
   );
 }
 
 // 生成中に出す段階。API から実際の進み具合は取れないので、経過時間（秒）で切り替える目安
 const STEPS = [
-  { label: "板書を読み取っています", from: 0 },
-  { label: "解説を書いています", from: 12 },
-  { label: "確認問題を作っています", from: 40 },
+  { label: "板書を読み取っています", short: "読み取り", from: 0 },
+  { label: "解説を書いています", short: "解説", from: 12 },
+  { label: "確認問題を作っています", short: "確認問題", from: 40 },
 ];
 
 // これより長くかかったら、待たせていることを一言添える（秒）
@@ -271,60 +363,59 @@ function GenerateProgress() {
   );
 
   return (
-    <div className="border-line bg-surface relative flex flex-col gap-4 overflow-hidden rounded-sm border p-4">
-      {/* 上端の細い線で、止まっていないことを伝える */}
-      <span
-        aria-hidden
-        className="bg-accent absolute inset-x-0 top-0 h-0.5 origin-left"
-        style={{ animation: "bar 1600ms ease-out infinite alternate" }}
-      />
-
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="font-semibold">解説と確認問題を作っています</p>
+    <div className="border-line bg-surface flex flex-col gap-3 rounded-sm border p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p
+          role="status"
+          className="flex items-center gap-2 font-semibold whitespace-nowrap"
+        >
+          <span className="text-accent">
+            <Spinner />
+          </span>
+          {STEPS[current].label}
+        </p>
         <p className="font-display text-muted text-sm whitespace-nowrap tabular-nums">
           <span className="sr-only">経過時間 </span>
           {formatElapsed(elapsed)}
         </p>
       </div>
 
-      <ol className="flex flex-col gap-2.5">
+      <ol className="grid grid-cols-3 gap-1.5" aria-label="進み具合（目安）">
         {STEPS.map((step, i) => {
           const state = i < current ? "done" : i === current ? "now" : "next";
           return (
             <li
-              key={step.label}
+              key={step.short}
               aria-current={state === "now" ? "step" : undefined}
-              className={`flex items-center gap-2.5 text-sm transition-colors ${
+              className={`flex flex-col gap-1.5 text-xs transition-colors ${
                 state === "next" ? "text-muted" : "text-foreground"
-              } ${state === "now" ? "font-semibold" : ""}`}
+              }`}
             >
-              <span className="grid size-5 shrink-0 place-items-center">
-                {state === "done" ? (
-                  <Check aria-hidden className="text-accent size-4" />
-                ) : state === "now" ? (
-                  <span className="text-accent">
-                    <Spinner />
-                  </span>
-                ) : (
-                  <span aria-hidden className="bg-line size-1.5 rounded-full" />
+              <span className="bg-line relative h-1 overflow-hidden rounded-sm">
+                {state === "done" && (
+                  <span className="bg-accent absolute inset-0" />
+                )}
+                {state === "now" && (
+                  <span
+                    aria-hidden
+                    className="bg-accent absolute inset-0 origin-left"
+                    style={{
+                      animation: "bar 1600ms ease-out infinite alternate",
+                    }}
+                  />
                 )}
               </span>
-              {step.label}
+              {step.short}
             </li>
           );
         })}
       </ol>
 
-      {/* 読み上げには、今の段階だけを伝える */}
-      <p role="status" className="sr-only">
-        {STEPS[current].label}
-      </p>
-
-      <p className="text-muted border-line border-t pt-3 text-xs leading-relaxed [word-break:auto-phrase]">
-        {elapsed < SLOW_AFTER
-          ? "段階は目安です。数十秒から数分かかるので、この画面のままお待ちください。"
-          : "いつもより時間がかかっています。もう少しだけ、この画面のままお待ちください。"}
-      </p>
+      {elapsed >= SLOW_AFTER && (
+        <p className="text-muted text-xs [word-break:auto-phrase]">
+          時間がかかっています。この画面のまま、もう少しお待ちください
+        </p>
+      )}
     </div>
   );
 }
