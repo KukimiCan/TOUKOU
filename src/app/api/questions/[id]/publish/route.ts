@@ -20,7 +20,7 @@ export async function POST(_request: Request, { params }: Context) {
   }
 
   const id = z.uuid().safeParse((await params).id);
-  const question = id.success ? publishQuestion(userId, id.data) : null;
+  const question = id.success ? await publishQuestion(userId, id.data) : null;
   if (!question || !question.shareId) {
     return Response.json({ error: "問題が見つかりません" }, { status: 404 });
   }

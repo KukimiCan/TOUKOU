@@ -54,6 +54,6 @@ export async function generateMaterial(
   }));
 
   await setExplanation(userId, id, explanation);
-  replaceQuestionsForMaterial(userId, id, questions);
+  await replaceQuestionsForMaterial(userId, id, questions);
   return { explanation, questionCount: questions.length };
 }

@@ -34,6 +34,9 @@ export async function proxy(request: NextRequest) {
         for (const [name, value] of Object.entries(headers)) {
           response.headers.set(name, value);
         }
+        if (cookiesToSet.length > 0 && !response.headers.has("Cache-Control")) {
+          response.headers.set("Cache-Control", "private, no-store");
+        }
       },
     },
   });
@@ -46,6 +49,12 @@ export async function proxy(request: NextRequest) {
     const redirect = NextResponse.redirect(new URL("/login", request.url));
     for (const cookie of response.cookies.getAll()) {
       redirect.cookies.set(cookie);
+    }
+    if (response.cookies.getAll().length > 0) {
+      redirect.headers.set(
+        "Cache-Control",
+        response.headers.get("Cache-Control") ?? "private, no-store",
+      );
     }
     return redirect;
   }

@@ -9,6 +9,8 @@ import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createLoginClient } from "@/lib/supabase/login";
 import { createClient } from "@/lib/supabase/server";
 
+const noStore = { "Cache-Control": "private, no-store" };
+
 export async function POST(request: Request) {
   await connection();
 
@@ -17,7 +19,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return Response.json(
       { error: "メールアドレスとパスワードを入力してください" },
-      { status: 400 },
+      { status: 400, headers: noStore },
     );
   }
 
@@ -28,7 +30,7 @@ export async function POST(request: Request) {
   ) {
     return Response.json(
       { error: "ログインの設定が済んでいません" },
-      { status: 500, headers: { "Cache-Control": "private, no-store" } },
+      { status: 500, headers: noStore },
     );
   }
 
@@ -41,22 +43,19 @@ export async function POST(request: Request) {
     if (error.status === 429) {
       return Response.json(
         { error: "しばらく待ってからもう一度お試しください" },
-        {
-          status: 429,
-          headers: { "Cache-Control": "private, no-store" },
-        },
+        { status: 429, headers: noStore },
       );
     }
     return Response.json(
       { error: "メールアドレスかパスワードが違います" },
-      { status: 401 },
+      { status: 401, headers: noStore },
     );
   }
 
   if (!data.session) {
     return Response.json(
       { error: "ログインできませんでした" },
-      { status: 500, headers: { "Cache-Control": "private, no-store" } },
+      { status: 500, headers: noStore },
     );
   }
 
@@ -70,10 +69,12 @@ export async function POST(request: Request) {
     if (sessionError) {
       return Response.json(
         { error: "ログインできませんでした" },
-        { status: 500, headers: { "Cache-Control": "private, no-store" } },
+        { status: 500, headers: noStore },
       );
     }
   }
 
-  return Response.json(loginResponseSchema.parse({ ok: true }));
+  return Response.json(loginResponseSchema.parse({ ok: true }), {
+    headers: noStore,
+  });
 }
