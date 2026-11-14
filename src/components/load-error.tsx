@@ -1,10 +1,13 @@
 // front 担当のファイル。
-// 画面を開いたときに API から読み込めなかったときの表示（資料一覧・資料詳細で使う）。
+// 画面を開いたときに API から読み込めなかったときの表示（ホーム・資料一覧・資料詳細・問題で使う）。
 // - ログインしていない（401）：読み込み直しても同じなので、ログインへの案内を出す
-// - それ以外（通信できない、サーバーの不調など）：理由と「もう一度読み込む」ボタンを出す
+// - それ以外（通信できない、サーバーの不調など）：何が起きたかと次にどうするか、「もう一度読み込む」ボタンを出す
+// アイコン＋短い文＋ボタンの形にそろえる（docs/design.md「待ち時間と反応」）。
+import { CircleAlert, LogIn, RotateCw } from "lucide-react";
 import Link from "next/link";
 
 import { ApiError, errorMessage } from "./fetch-api";
+import { Button } from "./ui/button";
 
 type Props = {
   error: unknown;
@@ -19,10 +22,16 @@ export function LoadError({ error, title, loginMessage, onRetry }: Props) {
   if (error instanceof ApiError && error.status === 401) {
     return (
       <div className="flex flex-col items-center gap-4 py-12 text-center">
-        <p>{loginMessage}</p>
+        <span
+          aria-hidden
+          className="bg-accent-soft text-accent flex size-11 items-center justify-center rounded-full"
+        >
+          <LogIn className="size-5" />
+        </span>
+        <p className="max-w-sm [word-break:auto-phrase]">{loginMessage}</p>
         <Link
           href="/login"
-          className="bg-foreground text-background rounded px-6 py-3 font-semibold"
+          className="bg-foreground text-background hover:bg-foreground/85 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors"
         >
           ログインする
         </Link>
@@ -32,17 +41,26 @@ export function LoadError({ error, title, loginMessage, onRetry }: Props) {
 
   return (
     <div className="flex flex-col items-center gap-4 py-12 text-center">
-      <div role="alert" className="flex flex-col gap-1">
-        <p className="font-semibold">{title}</p>
-        <p className="text-sm opacity-70">{errorMessage(error)}</p>
+      <span
+        aria-hidden
+        className="bg-danger/10 text-danger flex size-11 items-center justify-center rounded-full"
+      >
+        <CircleAlert className="size-5" />
+      </span>
+      <div role="alert" className="flex max-w-sm flex-col gap-1">
+        <p className="font-semibold [word-break:auto-phrase]">{title}</p>
+        <p className="text-muted text-sm [word-break:auto-phrase]">
+          {errorMessage(error)}
+        </p>
       </div>
-      <button
-        type="button"
+      <Button
+        variant="secondary"
+        icon={<RotateCw aria-hidden className="size-4" />}
         onClick={onRetry}
-        className="rounded border border-current/30 px-6 py-3 font-semibold"
+        className="whitespace-nowrap"
       >
         もう一度読み込む
-      </button>
+      </Button>
     </div>
   );
 }

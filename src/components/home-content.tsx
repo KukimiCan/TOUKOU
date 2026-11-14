@@ -1,23 +1,26 @@
 // front 担当のファイル。
 // ホーム画面の中身（#65）。/api/home を取得し、次の授業カード・空き時間・短い復習を出す。
-// - 読み込み中：カードの形の枠に「読み込んでいます…」
+// - 読み込み中：次の授業カードと各欄の形をした骨格（HomeSkeleton）
 // - ログインしていない（401）：ログインへの案内（ログイン画面は #74）
-// - それ以外の失敗：エラーの文と「もう一度読み込む」ボタン
+// - それ以外の失敗：何が起きたかと、次にどうするかの文、「もう一度読み込む」ボタン
+// 失敗の表示は、資料や問題の画面と同じ部品（load-error.tsx）を使う。
 //
 // ホームを開いたままでも次の授業に進むよう、次のときに取り直す（取り直す間は今の表示を残す）。
 // - 授業の終了時刻を過ぎたとき（API は「まだ終わっていない授業のうち一番近いもの」を返すので、次の授業に変わる）
 // - 別のタブやアプリから戻ってきたとき（スマホでは、画面を消している間タイマーが止まることがあるため）
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { homeResponseSchema, type HomeResponse } from "@/contracts/home";
 
+import { ApiError } from "./fetch-api";
 import { FreeTimeSuggestions } from "./free-time-suggestions";
+import { LoadError } from "./load-error";
 import { NextClassCard } from "./next-class-card";
 import { NoCourses } from "./no-courses";
 import { ReviewList } from "./review-list";
+import { useClassClock } from "./use-class-clock";
 
 type State =
   | { status: "loading" }
@@ -40,6 +43,13 @@ async function fetchHome(): Promise<State> {
     return { status: "error" };
   }
 }
+
+// 失敗の表示（load-error.tsx）に渡す中身
+const unauthorizedError = new ApiError(401, "");
+const loadError = new ApiError(
+  0,
+  "インターネットにつながっているか確かめて、もう一度試してください。",
+);
 
 export function HomeContent() {
   const [state, setState] = useState<State>({ status: "loading" });
@@ -82,65 +92,89 @@ export function HomeContent() {
     return () => clearTimeout(timer);
   }, [home, load]);
 
+  // もう一度読み込む：すぐに骨格へ切り替えて、押したことが分かるようにする
   function retry() {
     setState({ status: "loading" });
     void load();
   }
 
-  if (state.status === "loading") {
-    return (
-      <section
-        aria-busy="true"
-        className="flex min-h-40 items-center justify-center rounded-lg border border-current/20 px-5 py-4"
-      >
-        <p className="text-sm opacity-70">読み込んでいます…</p>
-      </section>
-    );
-  }
+  if (state.status === "loading") return <HomeSkeleton />;
 
-  if (state.status === "unauthorized") {
+  if (state.status === "unauthorized" || state.status === "error") {
     return (
-      <section className="flex flex-col gap-3">
-        <p className="text-2xl font-bold">ログインしてください</p>
-        <p className="text-sm opacity-70">
-          ログインすると、ここに次の授業の場所と、移動を始める時刻が出ます。
-        </p>
-        <Link href="/login" className="text-base font-semibold underline">
-          ログインする
-        </Link>
-      </section>
-    );
-  }
-
-  if (state.status === "error") {
-    return (
-      <section
-        role="alert"
-        className="flex flex-col gap-3 rounded-lg border border-current/20 px-5 py-4"
-      >
-        <p className="text-base font-semibold">
-          ホームの情報を読み込めませんでした
-        </p>
-        <p className="text-sm opacity-70">
-          インターネットにつながっているか確かめて、もう一度試してください。
-        </p>
-        <button
-          type="button"
-          onClick={retry}
-          className="bg-foreground text-background rounded px-4 py-3 font-semibold"
-        >
-          もう一度読み込む
-        </button>
-      </section>
+      <LoadError
+        error={state.status === "unauthorized" ? unauthorizedError : loadError}
+        title="ホームの情報を読み込めませんでした"
+        loginMessage="ログインすると、次の授業の場所と、移動を始める時刻がここに出ます。"
+        onRetry={retry}
+      />
     );
   }
 
   const { nextClass, reviews, freeTimeSuggestions } = state.home;
+  // 表示に切り替わったときだけ、ふわっと出す（starting: = 最初に表示されたときの見た目）
   return (
-    <>
+    <div className="flex flex-col gap-10 transition-opacity duration-200 starting:opacity-0">
       {nextClass ? <NextClassCard nextClass={nextClass} /> : <NoCourses />}
       <FreeTimeSuggestions suggestions={freeTimeSuggestions} />
       <ReviewList reviews={reviews} leaveAt={nextClass?.leaveAt} />
-    </>
+    </div>
+  );
+}
+
+// 画面の上の「TODAY · 11.14 SAT」。日付は端末の時刻で決めるので、画面に出てから入れる
+const todayFormat = new Intl.DateTimeFormat("en-US", {
+  month: "numeric",
+  day: "numeric",
+  weekday: "short",
+  timeZone: "Asia/Tokyo",
+});
+
+export function TodayLabel() {
+  const now = useClassClock();
+  let date = "";
+  if (now !== null) {
+    const parts = Object.fromEntries(
+      todayFormat.formatToParts(new Date(now)).map((p) => [p.type, p.value]),
+    );
+    date = `${parts.month}.${parts.day} ${parts.weekday}`;
+  }
+  return (
+    <p className="font-display text-accent text-sm font-semibold tracking-[0.2em] whitespace-nowrap uppercase tabular-nums">
+      Today
+      {date && <span className="text-muted"> · {date}</span>}
+    </p>
+  );
+}
+
+// 読み込み中の骨格。次の授業カード・空き時間・復習の形を先に見せる
+export function HomeSkeleton() {
+  return (
+    <div role="status" aria-busy="true" className="flex flex-col gap-10">
+      <span className="sr-only">ホームの情報を読み込んでいます</span>
+      <div aria-hidden className="border-line bg-surface border">
+        <div className="flex items-start justify-between gap-4 px-5 pt-5">
+          <div className="skeleton h-4 w-16" />
+          <div className="flex flex-col items-end gap-2">
+            <div className="skeleton h-3 w-12" />
+            <div className="skeleton h-9 w-24" />
+          </div>
+        </div>
+        <div className="flex flex-col gap-3 px-5 pt-3 pb-5">
+          <div className="skeleton h-7 w-3/4" />
+          <div className="skeleton mt-1 h-5 w-1/2" />
+          <div className="skeleton h-5 w-2/3" />
+        </div>
+        <div className="border-line flex items-center justify-between border-t px-5 py-4">
+          <div className="skeleton h-4 w-28" />
+          <div className="skeleton h-7 w-16" />
+        </div>
+      </div>
+      <div aria-hidden className="flex flex-col gap-3">
+        <div className="skeleton h-5 w-40" />
+        <div className="skeleton h-12 w-full" />
+        <div className="skeleton h-12 w-full" />
+      </div>
+    </div>
   );
 }
