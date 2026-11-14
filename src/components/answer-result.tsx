@@ -101,9 +101,7 @@ export function AnswerResultView({ result }: { result: AnswerResult }) {
         size={48}
         className="text-xs"
       >
-        {result.correct
-          ? "…正解とか。べつに褒めてないけど？"
-          : "あれ、そっち選んじゃった？"}
+        {result.correct ? "…まあ、当然か。" : "それ、違うけど？"}
       </MascotLine>
 
       <section className="border-accent/50 flex min-h-0 flex-col gap-0.5 border-l-2 pl-3">

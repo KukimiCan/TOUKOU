@@ -17,7 +17,6 @@ import { type Question, questionsResponseSchema } from "@/contracts/questions";
 
 import { fetchApi } from "./fetch-api";
 import { LoadError } from "./load-error";
-import { Mascot } from "./mascot";
 import {
   BackToCourses,
   buildCourseEntries,
@@ -63,9 +62,6 @@ function QuestionsSkeleton() {
   return (
     <div role="status" aria-live="polite" className="flex flex-col">
       <span className="sr-only">問題を読み込んでいます</span>
-      <div aria-hidden className="flex shrink-0 justify-center pb-2">
-        <Mascot expression="smug" bob size={72} decorative />
-      </div>
       {[0, 1, 2].map((n) => (
         <div
           key={n}
