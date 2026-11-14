@@ -1,13 +1,13 @@
 // front 担当のファイル。
-// 時間割画面の中身。週の表（timetable-editor.tsx）と、時間割の設定の欄（#58）をまとめる。
+// 時間割画面の中身。週の表（timetable-editor.tsx）と、時間割の設定（#58）をまとめる。
 // - 開いたときに、科目（GET /api/courses）と設定（GET /api/settings）を API から読み込む（#59）
 // - 読み込み中は表の形の骨格を出し、読み込めなかったとき・ログインしていないときは、それぞれの表示を出す
+// - 設定は主役ではないので画面に並べず、見出しの右の歯車からモーダルで開く
 // - 設定は保存（PATCH /api/settings）できたら、表の左の時刻と、科目フォームの時限の選択肢にすぐ反映する
 "use client";
 
 import { LogIn, RotateCw, Settings2, TriangleAlert } from "lucide-react";
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { type Course, coursesResponseSchema } from "@/contracts/courses";
 import { type Settings, settingsResponseSchema } from "@/contracts/settings";
@@ -16,12 +16,13 @@ import { ApiError, errorMessage, fetchApi } from "./fetch-api";
 import { SettingsForm } from "./settings-form";
 import {
   SavedNotice,
-  openSheet,
-  Sheet,
   TimetableEditor,
   useSavedNotice,
 } from "./timetable-editor";
 import { Button } from "./ui/button";
+import { ButtonLink } from "./ui/button-link";
+import { Modal } from "./ui/modal";
+import { Screen } from "./ui/screen";
 
 // 画面を開いたときの読み込みの状態
 type Load =
@@ -69,41 +70,45 @@ export function TimetableScreen() {
 
   if (load.status === "error") {
     // ログインしていないときは、読み込み直しても同じなので、ログインへの案内を出す
-    if (load.error instanceof ApiError && load.error.status === 401) {
-      return (
-        <div className="flex flex-col items-center gap-4 py-12 text-center">
-          <LogIn aria-hidden className="text-muted size-6" />
-          <p className="[word-break:auto-phrase]">
-            ログインすると、時間割を登録・確認できます。
-          </p>
-          <Link
-            href="/login"
-            className="bg-foreground text-background hover:bg-foreground/85 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors"
-          >
-            <LogIn aria-hidden className="size-4" />
-            ログインする
-          </Link>
-        </div>
-      );
-    }
+    const loggedOut =
+      load.error instanceof ApiError && load.error.status === 401;
     return (
-      <div className="flex flex-col items-center gap-4 py-12 text-center">
-        <TriangleAlert aria-hidden className="text-danger size-6" />
-        <div role="alert" className="flex flex-col gap-1">
-          <p className="font-semibold">時間割を読み込めませんでした</p>
-          <p className="text-muted text-sm [word-break:auto-phrase]">
-            {errorMessage(load.error)}
-          </p>
+      <Screen title="時間割" width="max-w-3xl">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 pb-12 text-center">
+          {loggedOut ? (
+            <>
+              <LogIn aria-hidden className="text-muted size-6" />
+              <p className="[word-break:auto-phrase]">
+                ログインすると、時間割を登録・確認できます。
+              </p>
+              <ButtonLink
+                href="/login"
+                icon={<LogIn aria-hidden className="size-4" />}
+                className="px-6"
+              >
+                ログインする
+              </ButtonLink>
+            </>
+          ) : (
+            <>
+              <TriangleAlert aria-hidden className="text-danger size-6" />
+              <div role="alert" className="flex flex-col gap-1">
+                <p className="font-bold">時間割を読み込めませんでした</p>
+                <p className="text-muted text-sm [word-break:auto-phrase]">
+                  {errorMessage(load.error)}
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                icon={<RotateCw aria-hidden className="size-4" />}
+                onClick={retry}
+              >
+                もう一度読み込む
+              </Button>
+            </>
+          )}
         </div>
-        <Button
-          variant="secondary"
-          icon={<RotateCw aria-hidden className="size-4" />}
-          onClick={retry}
-          className="whitespace-nowrap"
-        >
-          もう一度読み込む
-        </Button>
-      </div>
+      </Screen>
     );
   }
 
@@ -115,43 +120,45 @@ export function TimetableScreen() {
   );
 }
 
-// 読み込み中の骨格。週の表（5 曜日 × 5 時限）と設定の欄の形を先に見せる
+// 読み込み中の骨格。読み込み後と同じ枠で、週の表（5 曜日 × 5 時限）の形を先に見せる
 function TimetableSkeleton() {
   return (
-    <div role="status" aria-live="polite" className="flex flex-col gap-4">
-      <span className="sr-only">時間割を読み込んでいます</span>
-      <div className="skeleton h-4 w-64 max-w-full" />
+    <Screen title="時間割" width="max-w-3xl">
       <div
-        aria-hidden
-        className="border-line bg-line grid gap-px overflow-hidden rounded-sm border"
-        style={{ gridTemplateColumns: "2.75rem repeat(5, minmax(0, 1fr))" }}
+        role="status"
+        aria-live="polite"
+        className="flex min-h-0 flex-1 flex-col"
       >
-        {Array.from({ length: 6 * 6 }, (_, i) => {
-          const isHeader = i < 6 || i % 6 === 0;
-          return (
-            <div
-              key={i}
-              className={`${isHeader ? "bg-background" : "bg-surface"} ${
-                i < 6 ? "h-9" : "h-[4.5rem]"
-              } p-1.5`}
-            >
-              {/* 授業が入っていそうな数マスだけ、骨格を入れる */}
-              {!isHeader && [8, 15, 21, 26].includes(i) && (
-                <div className="skeleton size-full" />
-              )}
-            </div>
-          );
-        })}
+        <span className="sr-only">時間割を読み込んでいます</span>
+        <div
+          aria-hidden
+          className="border-line bg-line grid min-h-0 flex-1 gap-px overflow-hidden rounded-sm border sm:max-h-[40rem]"
+          style={{
+            gridTemplateColumns: "2.75rem repeat(5, minmax(0, 1fr))",
+            gridTemplateRows: "2rem repeat(5, minmax(2.75rem, 1fr))",
+          }}
+        >
+          {Array.from({ length: 6 * 6 }, (_, i) => {
+            const isHeader = i < 6 || i % 6 === 0;
+            return (
+              <div
+                key={i}
+                className={`${isHeader ? "bg-background" : "bg-surface"} p-0.5`}
+              >
+                {/* 授業が入っていそうな数マスだけ、骨格を入れる */}
+                {!isHeader && [8, 15, 21, 26].includes(i) && (
+                  <div className="skeleton size-full" />
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
-      <div className="border-line mt-6 flex flex-col gap-3 border-t pt-5">
-        <div className="skeleton h-5 w-32" />
-        <div className="skeleton h-4 w-48" />
-      </div>
-    </div>
+    </Screen>
   );
 }
 
-// 読み込めたあとの画面（週の表と設定の欄）
+// 読み込めたあとの画面（週の表と、設定のモーダル）
 function TimetableContent({
   initialCourses,
   initialSettings,
@@ -160,15 +167,14 @@ function TimetableContent({
   initialSettings: Settings;
 }) {
   const [settings, setSettings] = useState(initialSettings);
+  const [open, setOpen] = useState(false);
   // 開くたびにフォームをいまの設定に戻すための番号
   const [opened, setOpened] = useState(0);
   const [notice, showNotice] = useSavedNotice();
-  // <dialog> は、HTML の標準の「画面の上に重ねて出す箱」。showModal() で開き、close() で閉じる
-  const dialogRef = useRef<HTMLDialogElement>(null);
 
-  function open() {
+  function openSettings() {
     setOpened((n) => n + 1);
-    openSheet(dialogRef.current);
+    setOpen(true);
   }
 
   // 設定を API に保存する。保存できなかったときは、フォームに出すメッセージを返す
@@ -179,7 +185,7 @@ function TimetableContent({
         body: next,
       });
       setSettings(settingsResponseSchema.parse(await res.json()));
-      dialogRef.current?.close();
+      setOpen(false);
       showNotice("設定を保存しました");
       return null;
     } catch (error) {
@@ -187,76 +193,26 @@ function TimetableContent({
     }
   }
 
-  const periods = [...settings.periods].sort((a, b) => a.period - b.period);
-
   return (
-    <>
-      <TimetableEditor
-        initialCourses={initialCourses}
-        periodTimes={settings.periods}
-      />
-
-      {/* 設定の欄。カードにせず、見出しと罫線で表と区切る */}
-      <section
-        aria-labelledby="settings-title"
-        className="border-line mt-6 flex flex-col gap-4 border-t pt-5"
-      >
-        <div className="flex items-center justify-between gap-3">
-          <h2 id="settings-title" className="text-base font-bold">
-            時間割の設定
-          </h2>
-          <Button
-            variant="secondary"
-            icon={<Settings2 aria-hidden className="size-4" />}
-            onClick={open}
-            className="whitespace-nowrap"
-          >
-            設定を変更
-          </Button>
-        </div>
-        <dl className="flex flex-col gap-4 text-sm">
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-muted">移動の余裕時間</dt>
-            <dd>
-              <span className="font-display text-lg font-semibold tabular-nums">
-                {settings.travelBufferMinutes}
-              </span>
-              <span className="ml-1">分前に移動</span>
-            </dd>
-          </div>
-          <div className="flex flex-col gap-2">
-            <dt className="text-muted">時限の時刻</dt>
-            <dd>
-              <ul className="font-display grid grid-cols-2 gap-x-6 gap-y-1 tabular-nums sm:grid-cols-4">
-                {periods.map(({ period, start, end }) => (
-                  <li
-                    key={period}
-                    className="border-line flex items-baseline gap-2 border-b py-1"
-                  >
-                    <span className="w-5 font-semibold">
-                      {period}
-                      <span className="sr-only">限</span>
-                    </span>
-                    <span className="text-muted whitespace-nowrap">
-                      {start}–{end}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </dd>
-          </div>
-        </dl>
-      </section>
-
-      <Sheet
-        dialogRef={dialogRef}
-        titleId="settings-dialog-title"
-        title="時間割の設定"
-      >
+    <TimetableEditor
+      initialCourses={initialCourses}
+      periodTimes={settings.periods}
+      actions={
+        <Button
+          variant="ghost"
+          aria-label="時間割の設定"
+          title="時間割の設定"
+          onClick={openSettings}
+          className="size-11 px-0! py-0!"
+        >
+          <Settings2 aria-hidden className="size-5" />
+        </Button>
+      }
+    >
+      <Modal open={open} onClose={() => setOpen(false)} title="時間割の設定">
         <SettingsForm key={opened} initial={settings} onSubmit={save} />
-      </Sheet>
-
+      </Modal>
       <SavedNotice notice={notice} />
-    </>
+    </TimetableEditor>
   );
 }
