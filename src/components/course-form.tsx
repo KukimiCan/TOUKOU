@@ -19,8 +19,16 @@ import type { PeriodTime } from "@/contracts/settings";
 import { Button } from "./ui/button";
 import { DAY_LABELS } from "./timetable-grid";
 
-// 時限は contracts の決まりで 1〜8
-const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8];
+// 時限は contracts の決まりで 1〜8。設定の時限が読めないときに使う
+const ALL_PERIODS = [1, 2, 3, 4, 5, 6, 7, 8];
+
+// 選べる時限：設定にある時限（いまの科目の時限が設定に無いときも、選んだままにできるよう足す）
+function periodOptions(periodTimes: PeriodTime[], current: number) {
+  const set = new Set(periodTimes.map((p) => p.period));
+  if (set.size === 0) return ALL_PERIODS;
+  set.add(current);
+  return [...set].sort((a, b) => a - b);
+}
 
 type FieldName = keyof CreateCourse;
 type FieldErrors = Partial<Record<FieldName, string>>;
@@ -126,7 +134,7 @@ export function CourseForm({
 
   return (
     // noValidate：ブラウザの英語まじりの吹き出しではなく、下の日本語のメッセージで知らせる
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
       <div className="grid grid-cols-[2fr_3fr] gap-3">
         <Field {...field("dayOfWeek")}>
           <select {...fieldProps("dayOfWeek")} defaultValue={initial.dayOfWeek}>
@@ -139,7 +147,7 @@ export function CourseForm({
         </Field>
         <Field {...field("period")}>
           <select {...fieldProps("period")} defaultValue={initial.period}>
-            {PERIODS.map((period) => (
+            {periodOptions(periodTimes, initial.period).map((period) => (
               <option key={period} value={period}>
                 {periodLabel(period)}
               </option>

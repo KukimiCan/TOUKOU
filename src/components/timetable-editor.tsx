@@ -1,23 +1,26 @@
 // front 担当のファイル。
-// 時間割画面の本体。週の表と、科目を登録・変更するボトムシート（画面の下から出る入力欄）をまとめる。
+// 時間割画面の本体。画面の枠（Screen）、週の表、科目を登録・変更するモーダルをまとめる。
+// 画面は端末の高さに収め、縦にスクロールさせない（表の行の高さは、残りの高さで割って決める）。
 // - 空いたマス（＋）を押すと、その曜日・時限が入った状態で登録フォームが開く（#56）
-// - 科目のマスを押すと、その科目が入った状態で変更フォームが開く。シートの下から削除もできる（#57）
-// - 削除は、シートの中で「削除しますか？」と確認してから行う
+// - 見出しの右の「追加」でも登録できる（表に出ていない土日・時限に登録するとき）
+// - 科目のマスを押すと、その科目が入った状態で変更フォームが開く。モーダルの下から削除もできる（#57）
+// - 削除は、モーダルの中で「削除しますか？」と確認してから行う
 // - 同じ曜日・時限に別の科目があるときは登録・変更しない（週の表は 1 マスに 1 つしか出せないため）
 // - 登録・変更・削除は API（/api/courses）に送り、成功したら表に反映する（#59）
-// - 送っている間はボタンに回る印を出し、失敗したらシートの中にメッセージを出す
+// - 送っている間はボタンに回る印を出し、失敗したらモーダルの中にメッセージを出す
 // - 成功したら、画面の下に「登録しました」などを少しの間だけ出し、そのマスを強調する
-// ボトムシート（Sheet）と保存できたことの知らせ（SavedNotice）は、設定の欄（timetable-screen.tsx）でも使う。
+// 保存できたことの知らせ（SavedNotice）は、設定の保存（timetable-screen.tsx）でも使う。
 "use client";
 
-import { CalendarPlus, Check, Plus, Trash2, X } from "lucide-react";
 import {
-  type ReactNode,
-  type RefObject,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+  CalendarPlus,
+  Check,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import {
   type Course,
@@ -30,19 +33,30 @@ import type { PeriodTime } from "@/contracts/settings";
 
 import { CourseForm, FormError } from "./course-form";
 import { ApiError, errorMessage, fetchApi } from "./fetch-api";
-import { DAY_LABELS, DAYS_BY_GET_DAY, TimetableGrid } from "./timetable-grid";
+import {
+  DAY_LABELS,
+  DAYS_BY_GET_DAY,
+  getVisiblePeriods,
+  TimetableGrid,
+} from "./timetable-grid";
 import { Button } from "./ui/button";
+import { Modal } from "./ui/modal";
+import { Screen } from "./ui/screen";
 
 type Props = {
   initialCourses: Course[];
   periodTimes: PeriodTime[];
+  // 見出しの右に、追加のボタンと並べて置く操作（設定を開くボタン）
+  actions?: ReactNode;
+  // 画面に重ねて出すもの（設定のモーダルなど）
+  children?: ReactNode;
 };
 
-// シートで開いている内容
-// - create：空いたマスから開いた登録
-// - edit：科目のマスから開いた変更（confirmingDelete が true のときは、削除の確認を出す）
+// モーダルで開いている内容
+// - create：登録
+// - edit：変更（confirmingDelete が true のときは、削除の確認を出す）
 // opened は、開くたびにフォームを最初の値に戻すための番号
-type Sheet =
+type Dialog =
   | { mode: "create"; dayOfWeek: DayOfWeek; period: number; opened: number }
   | {
       mode: "edit";
@@ -54,19 +68,26 @@ type Sheet =
 // 登録・変更したマスを強調しておく時間（ミリ秒）
 const HIGHLIGHT_MS = 1600;
 
-export function TimetableEditor({ initialCourses, periodTimes }: Props) {
+export function TimetableEditor({
+  initialCourses,
+  periodTimes,
+  actions,
+  children,
+}: Props) {
   const [courses, setCourses] = useState(initialCourses);
-  const [sheet, setSheet] = useState<Sheet | null>(null);
+  // 閉じる動きの間も中身を残すため、中身（dialog）と開いているか（open）を分けて持つ
+  const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [open, setOpen] = useState(false);
   // 削除を送っている間は true / 削除できなかったときのメッセージ
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   // 登録・変更した直後に強調する科目
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  // 全部の時限を出しているか（ふだんは授業のある時限とその前後だけ）
+  const [showAll, setShowAll] = useState(false);
   const [notice, showNotice] = useSavedNotice();
-  // 今日の曜日（表の見出しを強調する）。この部品はブラウザで読み込みが終わってから出るので、端末の時刻を使える
+  // 今日の曜日（表の列を塗る）。この部品はブラウザで読み込みが終わってから出るので、端末の時刻を使える
   const [today] = useState(() => DAYS_BY_GET_DAY[new Date().getDay()]);
-  // <dialog> は、HTML の標準の「画面の上に重ねて出す箱」。showModal() で開き、close() で閉じる
-  const dialogRef = useRef<HTMLDialogElement>(null);
 
   // 強調は少し経ったら外す
   useEffect(() => {
@@ -75,35 +96,48 @@ export function TimetableEditor({ initialCourses, periodTimes }: Props) {
     return () => clearTimeout(timer);
   }, [highlightId]);
 
+  const allPeriods = [...periodTimes]
+    .map((p) => p.period)
+    .sort((a, b) => a - b);
+  const periods = getVisiblePeriods(courses, allPeriods, showAll);
+  const canToggle =
+    getVisiblePeriods(courses, allPeriods, false).length < allPeriods.length;
+
   function openCreate(dayOfWeek: DayOfWeek, period: number) {
-    setSheet((prev) => ({
+    setDialog((prev) => ({
       mode: "create",
       dayOfWeek,
       period,
       opened: (prev?.opened ?? 0) + 1,
     }));
-    openSheet(dialogRef.current);
+    setOpen(true);
   }
 
   function openEdit(course: Course) {
     setDeleteError(null);
-    setSheet((prev) => ({
+    setDialog((prev) => ({
       mode: "edit",
       course,
       confirmingDelete: false,
       opened: (prev?.opened ?? 0) + 1,
     }));
-    openSheet(dialogRef.current);
+    setOpen(true);
   }
 
-  function close() {
-    dialogRef.current?.close();
+  // 「追加」から開いたときは、今日（日曜は月曜）の、表で最初に空いている時限を入れておく
+  function openCreateFromHeader() {
+    const day = today === "sun" ? "mon" : today;
+    const free =
+      allPeriods.find(
+        (p) => !courses.some((c) => c.dayOfWeek === day && c.period === p),
+      ) ?? 1;
+    openCreate(day, free);
   }
 
   // 削除の確認を出す / やめて変更の画面に戻る
   function setConfirmingDelete(confirmingDelete: boolean) {
     setDeleteError(null);
-    setSheet((prev) =>
+    setDialog((prev) =>
       prev?.mode === "edit" ? { ...prev, confirmingDelete } : prev,
     );
   }
@@ -134,7 +168,7 @@ export function TimetableEditor({ initialCourses, periodTimes }: Props) {
       // id は API（DB）が決めるので、返ってきた科目を表に足す
       const { course } = courseResponseSchema.parse(await res.json());
       setCourses((prev) => [...prev, course]);
-      close();
+      setOpen(false);
       setHighlightId(course.id);
       showNotice(`「${course.name}」を登録しました`);
       return null;
@@ -165,7 +199,7 @@ export function TimetableEditor({ initialCourses, periodTimes }: Props) {
       });
       const { course } = courseResponseSchema.parse(await res.json());
       setCourses((prev) => prev.map((c) => (c.id === id ? course : c)));
-      close();
+      setOpen(false);
       setHighlightId(course.id);
       showNotice("変更を保存しました");
       return null;
@@ -190,60 +224,88 @@ export function TimetableEditor({ initialCourses, periodTimes }: Props) {
     }
     setCourses((prev) => prev.filter((c) => c.id !== course.id));
     setDeleting(false);
-    close();
+    setOpen(false);
     showNotice(`「${course.name}」を削除しました`);
   }
 
   const title =
-    sheet?.mode === "edit"
-      ? sheet.confirmingDelete
+    dialog?.mode === "edit"
+      ? dialog.confirmingDelete
         ? "科目を削除"
         : "科目を変更"
       : "科目を登録";
 
   return (
-    <>
-      {courses.length === 0 ? (
-        // 空のとき：空であることと、最初にやることへの導線（アイコン＋短い文＋ボタン）
-        <div className="border-accent bg-accent-soft flex flex-col gap-3 border-l-2 px-4 py-4 sm:flex-row sm:items-center">
+    <Screen
+      title="時間割"
+      width="max-w-3xl"
+      actions={
+        <>
+          <Button
+            variant="secondary"
+            icon={<Plus aria-hidden className="size-4" />}
+            onClick={openCreateFromHeader}
+            className="px-3"
+          >
+            追加
+          </Button>
+          {actions}
+        </>
+      }
+    >
+      {courses.length === 0 && (
+        // 空のとき：空であることと、最初にやること（アイコン＋短い文。ボタンは見出しの「追加」とマスの＋）
+        <p className="text-muted flex shrink-0 items-start gap-2 text-sm [word-break:auto-phrase]">
           <CalendarPlus
             aria-hidden
-            className="text-accent size-6 shrink-0 sm:size-7"
+            className="text-accent mt-[0.2em] size-4 shrink-0"
           />
-          <div className="flex flex-1 flex-col gap-0.5">
-            <p className="font-semibold">まだ科目が登録されていません</p>
-            <p className="text-muted text-sm [word-break:auto-phrase]">
-              表の＋を押すと、その曜日・時限に科目を登録できます。
-            </p>
-          </div>
-          <Button
-            icon={<Plus aria-hidden className="size-4" />}
-            onClick={() => openCreate(today === "sun" ? "mon" : today, 1)}
-            className="whitespace-nowrap"
-          >
-            最初の科目を登録
-          </Button>
-        </div>
-      ) : (
-        <p className="text-muted text-sm [word-break:auto-phrase]">
-          ＋のマスを押すと登録、科目を押すと変更・削除できます。
+          <span>
+            まだ科目がありません。
+            <wbr />
+            空いたマスか「追加」から登録します。
+          </span>
         </p>
       )}
 
       <TimetableGrid
         courses={courses}
         periodTimes={periodTimes}
+        periods={periods}
         today={today}
         highlightId={highlightId}
         onSelectEmpty={openCreate}
         onSelectCourse={openEdit}
       />
 
-      <Sheet dialogRef={dialogRef} titleId="course-dialog-title" title={title}>
-        {sheet?.mode === "create" && (
+      {/* 隠している時限があるときだけ、全部の時限との切り替えを出す */}
+      {canToggle && (
+        <div className="-mt-2 flex shrink-0 justify-end">
+          <Button
+            variant="ghost"
+            icon={
+              showAll ? (
+                <ChevronsDownUp aria-hidden className="size-4" />
+              ) : (
+                <ChevronsUpDown aria-hidden className="size-4" />
+              )
+            }
+            aria-pressed={showAll}
+            onClick={() => setShowAll((v) => !v)}
+            className="px-2 py-1.5"
+          >
+            {showAll
+              ? "授業のある時限だけ表示"
+              : `すべての時限を表示（${allPeriods.length} 限まで）`}
+          </Button>
+        </div>
+      )}
+
+      <Modal open={open} onClose={() => setOpen(false)} title={title}>
+        {dialog?.mode === "create" && (
           <CourseForm
-            key={sheet.opened}
-            initial={{ dayOfWeek: sheet.dayOfWeek, period: sheet.period }}
+            key={dialog.opened}
+            initial={{ dayOfWeek: dialog.dayOfWeek, period: dialog.period }}
             periodTimes={periodTimes}
             submitLabel="登録する"
             onSubmit={addCourse}
@@ -251,37 +313,37 @@ export function TimetableEditor({ initialCourses, periodTimes }: Props) {
         )}
 
         {/* 変更のフォームは、削除の確認を出している間も消さずに隠す（「やめる」で入力途中の内容に戻れるように） */}
-        {sheet?.mode === "edit" && (
+        {dialog?.mode === "edit" && (
           <>
-            <div hidden={sheet.confirmingDelete}>
+            <div hidden={dialog.confirmingDelete}>
               <CourseForm
-                key={sheet.opened}
-                initial={sheet.course}
+                key={dialog.opened}
+                initial={dialog.course}
                 periodTimes={periodTimes}
                 submitLabel="変更を保存"
-                onSubmit={(input) => updateCourse(sheet.course.id, input)}
+                onSubmit={(input) => updateCourse(dialog.course.id, input)}
               />
-              <div className="border-line mt-5 border-t pt-4">
-                <Button
-                  variant="ghost"
-                  icon={<Trash2 aria-hidden className="size-4" />}
-                  onClick={() => setConfirmingDelete(true)}
-                  className="text-danger! hover:bg-danger/5 w-full py-3"
-                >
-                  この科目を削除
-                </Button>
-              </div>
+              <Button
+                variant="ghost"
+                icon={<Trash2 aria-hidden className="size-4" />}
+                onClick={() => setConfirmingDelete(true)}
+                className="text-danger! hover:bg-danger/5 mt-2 w-full py-3"
+              >
+                この科目を削除
+              </Button>
             </div>
 
-            {sheet.confirmingDelete && (
+            {dialog.confirmingDelete && (
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
                   <p className="[word-break:auto-phrase]">
-                    「{sheet.course.name}」を削除しますか？
+                    「{dialog.course.name}」を削除しますか？
                   </p>
                   <p className="text-muted text-sm [word-break:auto-phrase]">
-                    {DAY_LABELS[sheet.course.dayOfWeek]}曜 {sheet.course.period}
-                    限から消えます。元に戻せません。
+                    {DAY_LABELS[dialog.course.dayOfWeek]}曜{" "}
+                    {dialog.course.period}限から消えます。
+                    <wbr />
+                    元に戻せません。
                   </p>
                 </div>
                 {deleteError && <FormError>{deleteError}</FormError>}
@@ -297,7 +359,7 @@ export function TimetableEditor({ initialCourses, periodTimes }: Props) {
                   <Button
                     variant="danger"
                     icon={<Trash2 aria-hidden className="size-4" />}
-                    onClick={() => deleteCourse(sheet.course)}
+                    onClick={() => deleteCourse(dialog.course)}
                     loading={deleting}
                     className="py-3"
                   >
@@ -308,55 +370,12 @@ export function TimetableEditor({ initialCourses, periodTimes }: Props) {
             )}
           </>
         )}
-      </Sheet>
+      </Modal>
+
+      {children}
 
       <SavedNotice notice={notice} />
-    </>
-  );
-}
-
-// シートを開く。開いた直後は、閉じるボタンではなくシートそのものに入力の位置（フォーカス）を置く
-// （閉じるボタンに枠が出て目立つのと、うっかり閉じるのを防ぐため）
-export function openSheet(dialog: HTMLDialogElement | null) {
-  dialog?.showModal();
-  dialog?.focus();
-}
-
-// ボトムシート。スマホでは画面の下に横いっぱいに出し、広い画面では真ん中に出す。
-// 開くときは下から少し持ち上がる（150〜250ms。動きを減らす設定のときは止まる）
-export function Sheet({
-  dialogRef,
-  titleId,
-  title,
-  children,
-}: {
-  dialogRef: RefObject<HTMLDialogElement | null>;
-  titleId: string;
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <dialog
-      ref={dialogRef}
-      aria-labelledby={titleId}
-      tabIndex={-1}
-      className="bg-background text-foreground border-line backdrop:bg-foreground/40 mx-auto mt-auto mb-0 max-h-[90dvh] w-full max-w-xl translate-y-6 overflow-y-auto rounded-t-sm border-t px-5 pt-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] opacity-0 transition-[opacity,translate,display,overlay] transition-discrete duration-200 ease-out outline-none open:translate-y-0 open:opacity-100 sm:mb-auto sm:rounded-sm sm:border sm:pb-5 starting:open:translate-y-6 starting:open:opacity-0"
-    >
-      <div className="border-line mb-5 flex items-center justify-between border-b pb-3">
-        <h2 id={titleId} className="text-lg font-bold">
-          {title}
-        </h2>
-        <button
-          type="button"
-          onClick={() => dialogRef.current?.close()}
-          aria-label="閉じる"
-          className="text-muted hover:text-foreground -mr-2 flex size-11 items-center justify-center"
-        >
-          <X aria-hidden className="size-5" />
-        </button>
-      </div>
-      {children}
-    </dialog>
+    </Screen>
   );
 }
 
