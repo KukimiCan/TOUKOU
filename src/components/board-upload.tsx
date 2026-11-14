@@ -30,6 +30,8 @@ type Props = {
   courses: Course[];
   // 時限の時刻。科目を選んでおくのに使う（読めなかったときは null）
   settings: Settings | null;
+  // 科目の中の画面から開くときの、選んでおく科目（無ければ、今の授業などから選ぶ）
+  defaultCourseId?: string;
   // header：見出しの右に小さく。empty：資料が無いときに、画面の真ん中に大きく
   place: "header" | "empty";
 };
@@ -162,7 +164,12 @@ function PickInput({
   );
 }
 
-export function BoardUpload({ courses, settings, place }: Props) {
+export function BoardUpload({
+  courses,
+  settings,
+  defaultCourseId,
+  place,
+}: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<Picked | null>(null);
@@ -187,7 +194,9 @@ export function BoardUpload({ courses, settings, place }: Props) {
 
     // 撮った時刻で科目を選び直す（撮り直しのときは、選んだ科目を残す）
     if (!open) {
-      const next = suggestCourse(courses, settings, new Date());
+      const next = defaultCourseId
+        ? { courseId: defaultCourseId, reason: null }
+        : suggestCourse(courses, settings, new Date());
       setSuggestion(next);
       setCourseId(next?.courseId ?? "");
     }
