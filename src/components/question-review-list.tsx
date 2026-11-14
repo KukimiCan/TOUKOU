@@ -23,6 +23,7 @@ import {
   copyShareUrl,
 } from "./copy-share-url";
 import { errorMessage, fetchApi } from "./fetch-api";
+import { RichText } from "./math";
 import { CHOICE_LABELS, questionNumber } from "./question-format";
 import { Button } from "./ui/button";
 import { ButtonLink } from "./ui/button-link";
@@ -309,7 +310,7 @@ function QuestionDetail({
                 />
                 <span className="sr-only">{CHOICE_LABELS[i]}.</span>
                 <span className="flex-1 leading-relaxed [word-break:auto-phrase]">
-                  {choice}
+                  <RichText text={choice} />
                 </span>
                 {isAnswer && (
                   <span className="text-success inline-flex shrink-0 items-center gap-1 text-xs font-semibold whitespace-nowrap">
@@ -324,9 +325,9 @@ function QuestionDetail({
 
         <section className="border-accent/50 flex flex-col gap-1 border-l-2 pl-3">
           <h3 className="text-muted text-xs font-semibold">解説</h3>
-          <p className="text-sm leading-relaxed [word-break:auto-phrase]">
-            {question.explanation}
-          </p>
+          <div className="text-sm leading-relaxed [word-break:auto-phrase]">
+            <RichText text={question.explanation} />
+          </div>
         </section>
 
         <p className="text-muted flex flex-wrap items-center gap-x-3 text-xs [word-break:auto-phrase]">

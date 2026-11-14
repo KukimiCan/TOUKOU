@@ -4,7 +4,7 @@
 // - 全部を縦に並べず、タブで「今読むもの」だけを出す。最初は要約。項目が無いタブは出さない
 // - 中身は、画面の中の決まった場所（ScrollArea）だけでスクロールする
 // - 最後に「AI は間違うことがある」と、元の画像を開くボタンを置く
-// 数式は LaTeX（数式の書き方）の文字のまま出す。きれいな数式で出すにはライブラリが要るので、別に相談する。
+// 数式は LaTeX（数式の書き方）を KaTeX で描画する（math.tsx）。文章の中の $...$ も数式として描画する
 "use client";
 
 import { useId, useState } from "react";
@@ -13,6 +13,7 @@ import type { MaterialDetailResponse } from "@/contracts/materials";
 
 import { ScrollArea } from "./ui/screen";
 import { keepNumbersTogether } from "./material-format";
+import { MathTex, RichText } from "./math";
 
 // 画面は contracts だけを見る決まりなので、解説の型は contracts の詳細の型から取り出す
 export type Explanation = NonNullable<MaterialDetailResponse["explanation"]>;
@@ -86,9 +87,9 @@ export function ExplanationView({
           className="flex flex-col gap-5 py-4"
         >
           {tab === "summary" && (
-            <p className="text-[1.0625rem] leading-[1.9] [word-break:auto-phrase]">
-              {keepNumbersTogether(summary)}
-            </p>
+            <div className="text-[1.0625rem] leading-[1.9] [word-break:auto-phrase]">
+              <RichText text={keepNumbersTogether(summary)} />
+            </div>
           )}
 
           {tab === "terms" && (
@@ -96,10 +97,10 @@ export function ExplanationView({
               {terms.map((t, i) => (
                 <div key={i} className="flex flex-col gap-1 py-3 first:pt-0">
                   <dt className="font-semibold [word-break:auto-phrase]">
-                    {keepNumbersTogether(t.term)}
+                    <RichText text={keepNumbersTogether(t.term)} />
                   </dt>
                   <dd className="text-sm leading-relaxed [word-break:auto-phrase]">
-                    {keepNumbersTogether(t.meaning)}
+                    <RichText text={keepNumbersTogether(t.meaning)} />
                   </dd>
                 </div>
               ))}
@@ -111,12 +112,14 @@ export function ExplanationView({
               {formulas.map((f, i) => (
                 <li key={i} className="flex flex-col gap-2">
                   {/* 長い数式は横にスクロールして見る。数式は 1 文字ずつ読むので、幅のそろった書体にする */}
-                  <code className="border-line bg-surface overflow-x-auto rounded-sm border px-3 py-2 font-mono text-sm whitespace-pre">
-                    {f.formula}
-                  </code>
-                  <p className="text-sm leading-relaxed [word-break:auto-phrase]">
-                    {keepNumbersTogether(f.explanation)}
-                  </p>
+                  <MathTex
+                    tex={f.formula}
+                    display
+                    className="border-line bg-surface rounded-sm border px-3"
+                  />
+                  <div className="text-sm leading-relaxed [word-break:auto-phrase]">
+                    <RichText text={keepNumbersTogether(f.explanation)} />
+                  </div>
                 </li>
               ))}
             </ul>
@@ -127,10 +130,10 @@ export function ExplanationView({
               {omissions.map((o, i) => (
                 <div key={i} className="flex flex-col gap-1 py-3 first:pt-0">
                   <dt className="font-semibold [word-break:auto-phrase]">
-                    {keepNumbersTogether(o.topic)}
+                    <RichText text={keepNumbersTogether(o.topic)} />
                   </dt>
                   <dd className="text-sm leading-relaxed [word-break:auto-phrase]">
-                    {keepNumbersTogether(o.explanation)}
+                    <RichText text={keepNumbersTogether(o.explanation)} />
                   </dd>
                 </div>
               ))}
@@ -141,7 +144,7 @@ export function ExplanationView({
             <ul className="flex list-disc flex-col gap-1 pl-5 text-sm leading-relaxed">
               {unreadable.map((u, i) => (
                 <li key={i} className="[word-break:auto-phrase]">
-                  {keepNumbersTogether(u)}
+                  <RichText text={keepNumbersTogether(u)} />
                 </li>
               ))}
             </ul>
