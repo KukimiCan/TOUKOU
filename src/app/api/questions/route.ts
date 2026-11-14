@@ -30,6 +30,6 @@ export async function GET(request: Request) {
     );
   }
 
-  const questions = listQuestions(userId, parsed.data.materialId);
+  const questions = await listQuestions(userId, parsed.data.materialId);
   return Response.json(questionsResponseSchema.parse({ questions }));
 }

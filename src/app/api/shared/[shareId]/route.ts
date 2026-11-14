@@ -6,7 +6,7 @@
 import { connection } from "next/server";
 
 import { sharedQuestionResponseSchema } from "@/contracts/questions";
-import { findSharedQuestion } from "@/features/questions/question-store";
+import { getSharedQuestion } from "@/features/questions/question-store";
 
 type Context = { params: Promise<{ shareId: string }> };
 
@@ -14,18 +14,10 @@ export async function GET(_request: Request, { params }: Context) {
   await connection();
 
   const { shareId } = await params;
-  const question = findSharedQuestion(shareId);
+  const question = await getSharedQuestion(shareId);
   if (!question) {
     return Response.json({ error: "問題が見つかりません" }, { status: 404 });
   }
 
-  return Response.json(
-    sharedQuestionResponseSchema.parse({
-      question: {
-        shareId: question.shareId,
-        prompt: question.prompt,
-        choices: question.choices,
-      },
-    }),
-  );
+  return Response.json(sharedQuestionResponseSchema.parse({ question }));
 }
