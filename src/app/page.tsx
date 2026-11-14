@@ -6,21 +6,26 @@ import { HomeContent } from "@/components/home-content";
 
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-8">
-      <div>
-        <h1 className="text-2xl font-bold">TOUKOU</h1>
-        <p className="mt-1 text-sm opacity-70">
+    <div className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6">
+      <header>
+        <p className="font-display text-muted text-xs tracking-[0.2em] uppercase">
+          Today
+        </p>
+        <h1 className="mt-1 text-2xl">ホーム</h1>
+        <p className="text-muted mt-2 text-sm">
           授業はスキップしても、学びはスキップしない。
         </p>
-      </div>
+      </header>
 
       <HomeContent />
 
-      {/* 開発環境の確認用（docs/getting-started.md と DB の #2 で使う）。不要になったら消す */}
-      <section className="mt-8 rounded border border-current/20 p-4 text-sm opacity-70">
-        <h2 className="mb-2 font-semibold">開発環境の状態</h2>
-        <HealthStatus />
-      </section>
-    </main>
+      {/* 開発環境の確認用。利用者の画面には出さない */}
+      {process.env.NODE_ENV === "development" && (
+        <section className="border-line text-muted mt-8 border-t pt-4 text-sm">
+          <h2 className="mb-2 font-semibold">開発環境の状態</h2>
+          <HealthStatus />
+        </section>
+      )}
+    </div>
   );
 }
