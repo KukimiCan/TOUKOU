@@ -26,3 +26,16 @@ export function formatCreatedAt(createdAt: string) {
   const date = new Date(createdAt);
   return `${dateFormat.format(date)} ${timeFormat.format(date)}`;
 }
+
+// ファイルの大きさ。例：「1.2 MB」「840 KB」
+export function formatBytes(bytes: number) {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+// 経過時間。例：「0:42」「1:05」
+export function formatElapsed(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}

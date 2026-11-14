@@ -2,11 +2,20 @@
 // 板書の撮影・アップロード（#66）。資料一覧（/materials）の上に置く。
 // 1. 「カメラで撮る」か「写真を選ぶ」で画像を選ぶ
 //    （capture を付けた入力欄はカメラしか開かないので、写真を選ぶ用の入力欄を別に置く）
-// 2. 送る前に縮小した画像をプレビューし、科目を選ぶ
-// 3. 「アップロードする」を押すと、送っている間は「アップロードしています…」と出し、終わったら資料の詳細へ移る
+// 2. 送る前に縮小した画像をプレビューし、科目を選ぶ（科目が 1 つだけなら最初から選んでおく）
+// 3. 「アップロードする」を押すと、送っている間はボタンに回る印と、画像の上に進行中の線を出し、終わったら資料の詳細へ移る
+// 失敗したときは、理由（形式・大きさ・通信）を見出しで分けて出す。
 // 画像は API（POST /api/materials）に送る（#69）。
 "use client";
 
+import {
+  CalendarPlus,
+  Camera,
+  CircleAlert,
+  ImagePlus,
+  RotateCcw,
+  Upload,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -18,7 +27,10 @@ import {
   uploadMaterialFieldsSchema,
 } from "@/contracts/materials";
 
-import { errorMessage, fetchApi } from "./fetch-api";
+import { Button } from "./ui/button";
+import { Spinner } from "./ui/spinner";
+import { ApiError, errorMessage, fetchApi } from "./fetch-api";
+import { formatBytes } from "./material-format";
 import { ImageError, resizeImage } from "./resize-image";
 
 type Props = {
@@ -35,17 +47,51 @@ async function upload(body: FormData): Promise<MaterialResponse> {
 // 選んだ画像（縮小したもの）と、プレビュー用の URL
 type Picked = { file: File; previewUrl: string };
 
-const buttonClass =
-  "flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded px-2 py-3 font-semibold whitespace-nowrap";
+// 画面に出す失敗。title で何が起きたか、detail で次にどうすればよいかを伝える
+type Failure = { title: string; detail: string };
+
+// 写真を選ぶ入力欄（label）を、共通のボタンと同じ見た目にする。
+// 入力欄は見えなくしているので、キーボードで選んだときは label に枠を出す
+const pickClass =
+  "inline-flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent";
+
+function imageFailure(e: unknown): Failure {
+  if (e instanceof ImageError) {
+    const title = {
+      format: "この形式の画像は読み込めません",
+      size: "画像が大きすぎます",
+      other: "画像を準備できませんでした",
+    }[e.kind];
+    return { title, detail: e.message };
+  }
+  return {
+    title: "画像を準備できませんでした",
+    detail: "もう一度、画像を選んでください。",
+  };
+}
+
+function uploadFailure(e: unknown): Failure {
+  // 413 = 送ったデータが大きすぎる（サーバーの上限）
+  if (e instanceof ApiError && e.status === 413) {
+    return {
+      title: "画像が大きすぎます",
+      detail: "別の写真を選ぶか、撮り直してください。",
+    };
+  }
+  return { title: "アップロードできませんでした", detail: errorMessage(e) };
+}
 
 export function BoardUpload({ courses }: Props) {
   const router = useRouter();
   const [picked, setPicked] = useState<Picked | null>(null);
   // 画像を縮小している間は true
   const [preparing, setPreparing] = useState(false);
-  const [courseId, setCourseId] = useState("");
+  // 科目が 1 つだけなら、最初から選んでおく
+  const [courseId, setCourseId] = useState(
+    courses.length === 1 ? courses[0].id : "",
+  );
   const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<Failure | null>(null);
 
   // プレビュー用の URL は、使い終わったら片付ける（ブラウザのメモリを空けるため）
   useEffect(() => {
@@ -59,15 +105,13 @@ export function BoardUpload({ courses }: Props) {
     event.target.value = "";
     if (!file) return;
 
-    setError(null);
+    setFailure(null);
     setPreparing(true);
     try {
       const resized = await resizeImage(file);
       setPicked({ file: resized, previewUrl: URL.createObjectURL(resized) });
     } catch (e) {
-      setError(
-        e instanceof ImageError ? e.message : "画像を準備できませんでした。",
-      );
+      setFailure(imageFailure(e));
     } finally {
       setPreparing(false);
     }
@@ -75,7 +119,7 @@ export function BoardUpload({ courses }: Props) {
 
   function reset() {
     setPicked(null);
-    setError(null);
+    setFailure(null);
   }
 
   async function handleUpload() {
@@ -85,7 +129,10 @@ export function BoardUpload({ courses }: Props) {
       kind: "board",
     });
     if (!fields.success) {
-      setError("科目を選んでください。");
+      setFailure({
+        title: "科目を選んでください",
+        detail: "どの授業の板書かを選ぶと、科目ごとの一覧に入ります。",
+      });
       return;
     }
 
@@ -94,70 +141,123 @@ export function BoardUpload({ courses }: Props) {
     body.append("courseId", fields.data.courseId);
     body.append("kind", fields.data.kind);
 
-    setError(null);
+    setFailure(null);
     setUploading(true);
     try {
       const { material } = await upload(body);
       router.push(`/materials/${material.id}`);
-      // 移るまでの間も「アップロードしています…」のままにする
+      // 移るまでの間も「アップロードしています」のままにする
     } catch (e) {
-      setError(`アップロードできませんでした。${errorMessage(e)}`);
+      setFailure(uploadFailure(e));
       setUploading(false);
     }
   }
 
   if (courses.length === 0) {
     return (
-      <section className="flex flex-col gap-2 rounded border border-current/20 p-4 text-sm">
-        <p>板書を追加するには、先に時間割に科目を登録してください。</p>
-        <Link href="/timetable" className="self-start underline">
-          時間割へ
+      <section className="border-line bg-surface flex flex-col items-start gap-3 rounded-sm border p-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-base">板書を追加</h2>
+          <p className="text-muted text-sm [word-break:auto-phrase]">
+            板書は科目ごとに整理します。先に時間割へ科目を登録してください。
+          </p>
+        </div>
+        <Link
+          href="/timetable"
+          className="border-line bg-background hover:border-foreground inline-flex items-center gap-2 border px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors"
+        >
+          <CalendarPlus aria-hidden className="size-4" />
+          時間割に科目を登録する
         </Link>
       </section>
     );
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded border border-current/20 p-4">
-      <h2 className="font-semibold">板書を追加</h2>
+    <section className="border-line bg-surface flex flex-col gap-4 rounded-sm border p-4">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-base">板書を追加</h2>
+        <p className="text-muted text-sm [word-break:auto-phrase]">
+          撮った写真は、自分だけが見られます。
+        </p>
+      </div>
 
-      {!picked ? (
-        <div className="flex gap-2">
-          <label
-            className={`${buttonClass} bg-foreground text-background ${preparing ? "pointer-events-none opacity-50" : ""}`}
-          >
-            <CameraIcon />
-            カメラで撮る
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handlePick}
-              disabled={preparing}
-              className="sr-only"
-            />
-          </label>
-          <label
-            className={`${buttonClass} border border-current/30 ${preparing ? "pointer-events-none opacity-50" : ""}`}
-          >
-            写真を選ぶ
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handlePick}
-              disabled={preparing}
-              className="sr-only"
-            />
-          </label>
+      {preparing ? (
+        <div role="status" className="flex flex-col gap-2">
+          <div className="skeleton h-40 w-full" />
+          <p className="text-muted flex items-center justify-center gap-2 text-sm">
+            <Spinner />
+            画像を準備しています
+          </p>
+        </div>
+      ) : !picked ? (
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <label
+              className={`${pickClass} bg-foreground text-background hover:bg-foreground/85`}
+            >
+              <Camera aria-hidden className="size-4" />
+              カメラで撮る
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handlePick}
+                className="sr-only"
+              />
+            </label>
+            <label
+              className={`${pickClass} border-line bg-background text-foreground hover:border-foreground border`}
+            >
+              <ImagePlus aria-hidden className="size-4" />
+              写真を選ぶ
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePick}
+                className="sr-only"
+              />
+            </label>
+          </div>
+          <p className="text-muted text-xs [word-break:auto-phrase]">
+            JPEG・PNG・WebP の画像。大きな写真は、送る前に自動で縮小します。
+          </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element -- 選んだ画像はまだ送っていないので、ブラウザの中の URL を直接出す */}
-          <img
-            src={picked.previewUrl}
-            alt="アップロードする板書のプレビュー"
-            className="max-h-[40vh] w-full rounded border border-current/20 bg-current/5 object-contain"
-          />
+        <div className="flex flex-col gap-4">
+          <figure className="flex flex-col gap-1.5">
+            <div className="border-line bg-background relative overflow-hidden rounded-sm border">
+              {/* eslint-disable-next-line @next/next/no-img-element -- 選んだ画像はまだ送っていないので、ブラウザの中の URL を直接出す */}
+              <img
+                src={picked.previewUrl}
+                alt="アップロードする板書のプレビュー"
+                className={`max-h-[40vh] w-full object-contain transition-opacity ${uploading ? "opacity-60" : ""}`}
+              />
+              {/* 送っている間は、画像の上端に進行中の線を出す */}
+              {uploading && (
+                <span
+                  aria-hidden
+                  className="bg-accent absolute inset-x-0 top-0 h-0.5 origin-left"
+                  style={{ animation: "bar 900ms ease-out infinite alternate" }}
+                />
+              )}
+            </div>
+            <figcaption className="flex items-center justify-between gap-2">
+              <span className="font-display text-muted text-sm tabular-nums">
+                {formatBytes(picked.file.size)}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={reset}
+                disabled={uploading}
+                icon={<RotateCcw aria-hidden className="size-4" />}
+                className="-mr-2 px-2 whitespace-nowrap"
+              >
+                選び直す
+              </Button>
+            </figcaption>
+          </figure>
 
           <label className="flex flex-col gap-1">
             <span className="text-sm font-semibold">どの科目の板書ですか</span>
@@ -165,10 +265,10 @@ export function BoardUpload({ courses }: Props) {
               value={courseId}
               onChange={(event) => {
                 setCourseId(event.target.value);
-                setError(null);
+                setFailure(null);
               }}
               disabled={uploading}
-              className="rounded border border-current/30 bg-transparent px-3 py-3"
+              className="py-2.5"
             >
               <option value="" disabled>
                 選んでください
@@ -181,53 +281,30 @@ export function BoardUpload({ courses }: Props) {
             </select>
           </label>
 
-          <button
+          <Button
             type="button"
             onClick={handleUpload}
-            disabled={uploading}
-            className="bg-foreground text-background rounded px-4 py-3 font-semibold disabled:opacity-50"
+            loading={uploading}
+            icon={<Upload aria-hidden className="size-4" />}
+            className="w-full whitespace-nowrap"
           >
-            {uploading ? "アップロードしています…" : "アップロードする"}
-          </button>
-          <button
-            type="button"
-            onClick={reset}
-            disabled={uploading}
-            className="rounded border border-current/30 px-4 py-3 font-semibold disabled:opacity-50"
-          >
-            選び直す
-          </button>
+            {uploading ? "アップロードしています" : "アップロードする"}
+          </Button>
         </div>
       )}
 
-      {preparing && (
-        <p role="status" className="text-center text-sm opacity-70">
-          画像を準備しています…
-        </p>
-      )}
-      {error && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-          {error}
-        </p>
+      {failure && (
+        <div
+          role="alert"
+          className="bg-danger/10 text-danger flex gap-2 rounded-sm px-3 py-2.5 text-sm"
+        >
+          <CircleAlert aria-hidden className="mt-1 size-4 shrink-0" />
+          <div className="flex flex-col">
+            <p className="font-semibold">{failure.title}</p>
+            <p className="[word-break:auto-phrase]">{failure.detail}</p>
+          </div>
+        </div>
       )}
     </section>
-  );
-}
-
-function CameraIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="size-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" />
-      <circle cx="12" cy="13" r="3.5" />
-    </svg>
   );
 }
