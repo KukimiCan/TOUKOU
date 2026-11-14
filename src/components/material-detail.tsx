@@ -1,15 +1,13 @@
 // front 担当のファイル。
 // 資料詳細の中身（#68）。端末の高さに収め、縦にスクロールさせない（docs/design.md）。
-// - 解説がまだのとき：元の画像を大きく出し、下に「解説と確認問題を作る」。作っている間は段階と経過時間、失敗したら理由とやり直し
+// - 解説がまだのとき：元の画像を大きく出し、下に「解説を作る」。押すと裏で作り始め、画面は移らない（終わったら通知で知らせる）
 // - 解説があるとき：元の画像は見出しの右の小さな画像に畳み、解説をタブ（要約・用語・数式…）で切り替える。
 //   下に「確認問題を解く」を置き、次にやることを 1 つに絞る
 // - 広い画面（lg 以上）では、左に元の画像、右に解説を並べる
 // - 元の画像は押すとモーダルで大きく開き、そこから別のタブでも開ける（スマホで指で拡大するため）
-// - 板書を送った直後（autoGenerate）は、開いたらそのまま作り始める
 "use client";
 
 import {
-  CircleAlert,
   ExternalLink,
   ImageOff,
   ListChecks,
@@ -17,90 +15,31 @@ import {
   RefreshCw,
   Sparkles,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
-import {
-  type GenerateMaterialResponse,
-  generateMaterialResponseSchema,
-  type MaterialDetailResponse,
-} from "@/contracts/materials";
+import type { MaterialDetailResponse } from "@/contracts/materials";
 
 import { Button, buttonClass } from "./ui/button";
 import { ButtonLink } from "./ui/button-link";
 import { Modal } from "./ui/modal";
 import { Screen } from "./ui/screen";
-import { Spinner } from "./ui/spinner";
-import { type Explanation, ExplanationView } from "./explanation-view";
-import { errorMessage, fetchApi } from "./fetch-api";
-import { Mascot } from "./mascot";
-import { MascotLine } from "./mascot-line";
-import {
-  formatCreatedAt,
-  formatElapsed,
-  MATERIAL_KIND_LABELS,
-} from "./material-format";
+import { ExplanationView } from "./explanation-view";
+import { useGeneration } from "./generation-provider";
+import { formatCreatedAt, MATERIAL_KIND_LABELS } from "./material-format";
 
 type Props = {
   detail: MaterialDetailResponse;
   courseName: string;
-  autoGenerate: boolean;
 };
 
-// AI に解説と確認問題を作ってもらう。AI の返事を待つので、少し時間がかかる
-async function generate(materialId: string): Promise<GenerateMaterialResponse> {
-  const res = await fetchApi(
-    `/api/materials/${encodeURIComponent(materialId)}/generate`,
-    { method: "POST" },
-  );
-  return generateMaterialResponseSchema.parse(await res.json());
-}
-
-export function MaterialDetail({ detail, courseName, autoGenerate }: Props) {
-  const { material, imageUrl } = detail;
-  const [explanation, setExplanation] = useState<Explanation | null>(
-    detail.explanation,
-  );
-  // 送った直後に開いたときは、最初から「作っています」にしておく（下の効果で作り始める）
-  const [generating, setGenerating] = useState(
-    autoGenerate && !detail.explanation,
-  );
-  // 作った確認問題の数（この画面で作ったときだけ出す）
-  const [questionCount, setQuestionCount] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function MaterialDetail({ detail, courseName }: Props) {
+  const { material, imageUrl, explanation } = detail;
+  const { generatingIds, startGeneration } = useGeneration();
+  const generating = generatingIds.has(material.id);
   const [imageFailed, setImageFailed] = useState(false);
   const [imageOpen, setImageOpen] = useState(false);
-  // 自動で作り始めるのは 1 回だけ（開発時に効果が 2 回動いても、二重に作らない）
-  const autoStarted = useRef(false);
 
   const imageAlt = `${courseName}の${MATERIAL_KIND_LABELS[material.kind]}（元の画像）`;
-
-  // 作る。失敗しても「作っています」のまま止まらないよう、最後に必ず戻す
-  function runGenerate() {
-    return generate(material.id)
-      .then((result) => {
-        setExplanation(result.explanation);
-        setQuestionCount(result.questionCount);
-      })
-      .catch((e: unknown) => setError(errorMessage(e)))
-      .finally(() => setGenerating(false));
-  }
-
-  function handleGenerate() {
-    if (generating) return;
-    setGenerating(true);
-    setError(null);
-    void runGenerate();
-  }
-
-  useEffect(() => {
-    if (!autoGenerate || autoStarted.current) return;
-    autoStarted.current = true;
-    // 読み込み直したときに、もう一度作り始めないよう URL から外す
-    window.history.replaceState(null, "", window.location.pathname);
-    if (!detail.explanation) void runGenerate();
-    // 開いたときに 1 回だけ動かす
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const openImage = () => setImageOpen(true);
 
@@ -138,7 +77,6 @@ export function MaterialDetail({ detail, courseName, autoGenerate }: Props) {
         >
           {explanation ? (
             <>
-              {questionCount !== null && <Done count={questionCount} />}
               <ExplanationView
                 explanation={explanation}
                 onOpenImage={openImage}
@@ -151,41 +89,23 @@ export function MaterialDetail({ detail, courseName, autoGenerate }: Props) {
                 確認問題を解く
               </ButtonLink>
             </>
-          ) : generating ? (
-            <GenerateProgress />
-          ) : error ? (
-            <div
-              role="alert"
-              className="bg-danger/10 flex flex-col gap-3 rounded-sm p-4"
-            >
-              <MascotLine expression="panic" size={56}>
-                うそ、失敗した…！
-              </MascotLine>
-              <div className="text-danger flex gap-2 text-sm">
-                <CircleAlert aria-hidden className="mt-1 size-4 shrink-0" />
-                <div className="flex flex-col">
-                  <p className="font-semibold">解説を作れませんでした</p>
-                  <p className="[word-break:auto-phrase]">{error}</p>
-                </div>
-              </div>
+          ) : (
+            <>
               <Button
                 type="button"
-                onClick={handleGenerate}
-                icon={<RefreshCw aria-hidden className="size-4" />}
+                onClick={() => startGeneration(material.id, courseName)}
+                loading={generating}
+                icon={<Sparkles aria-hidden className="size-4" />}
                 className="w-full"
               >
-                もう一度作る
+                {generating ? "解説を作成中" : "解説を作る"}
               </Button>
-            </div>
-          ) : (
-            <Button
-              type="button"
-              onClick={handleGenerate}
-              icon={<Sparkles aria-hidden className="size-4" />}
-              className="w-full"
-            >
-              解説と確認問題を作る
-            </Button>
+              {generating && (
+                <p className="text-muted text-sm [word-break:auto-phrase]">
+                  できたら、画面の上に知らせます。ほかの画面に移っても作り続けます
+                </p>
+              )}
+            </>
           )}
         </section>
       </div>
@@ -317,122 +237,6 @@ function ImageFailed() {
       >
         読み込み直す
       </Button>
-    </div>
-  );
-}
-
-// 作り終えたときの知らせ。少しだけ目立つ動きで出す
-function Done({ count }: { count: number }) {
-  return (
-    <p
-      role="status"
-      className="bg-success/10 text-success flex shrink-0 items-center gap-2 rounded-sm px-3 py-2 text-sm font-semibold transition-[opacity,translate] duration-300 starting:translate-y-1 starting:opacity-0"
-    >
-      <Mascot
-        expression="praise"
-        size={48}
-        decorative
-        className="-my-1 transition-transform delay-150 duration-300 starting:scale-0"
-      />
-      <span className="flex flex-col">
-        {count > 0
-          ? `解説と確認問題 ${count} 問ができました`
-          : "解説ができました"}
-        <span className="text-muted text-xs font-normal">
-          …べつに褒めてないけど？
-        </span>
-      </span>
-    </p>
-  );
-}
-
-// 生成中に出す段階。API から実際の進み具合は取れないので、経過時間（秒）で切り替える目安
-const STEPS = [
-  { label: "板書を読み取っています", short: "読み取り", from: 0 },
-  { label: "解説を書いています", short: "解説", from: 12 },
-  { label: "確認問題を作っています", short: "確認問題", from: 40 },
-];
-
-// これより長くかかったら、待たせていることを一言添える（秒）
-const SLOW_AFTER = 90;
-
-// 生成中の表示。出ている間（= 生成中）だけ時間を数える
-function GenerateProgress() {
-  const [elapsed, setElapsed] = useState(0);
-
-  useEffect(() => {
-    const startedAt = Date.now();
-    const timer = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startedAt) / 1000));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // 今の段階 = 始まりの時間を過ぎた段階のうち、最後のもの
-  const current = STEPS.reduce(
-    (last, step, i) => (elapsed >= step.from ? i : last),
-    0,
-  );
-
-  return (
-    <div className="flex flex-col gap-3">
-      <MascotLine expression="smug" size={88} bob>
-        …で、板書は撮ったんでしょうね
-      </MascotLine>
-      <div className="border-line bg-surface flex flex-col gap-3 rounded-sm border p-4">
-        <div className="flex items-center justify-between gap-3">
-          <p
-            role="status"
-            className="flex items-center gap-2 font-semibold whitespace-nowrap"
-          >
-            <span className="text-accent">
-              <Spinner />
-            </span>
-            {STEPS[current].label}
-          </p>
-          <p className="font-display text-muted text-sm whitespace-nowrap tabular-nums">
-            <span className="sr-only">経過時間 </span>
-            {formatElapsed(elapsed)}
-          </p>
-        </div>
-
-        <ol className="grid grid-cols-3 gap-1.5" aria-label="進み具合（目安）">
-          {STEPS.map((step, i) => {
-            const state = i < current ? "done" : i === current ? "now" : "next";
-            return (
-              <li
-                key={step.short}
-                aria-current={state === "now" ? "step" : undefined}
-                className={`flex flex-col gap-1.5 text-xs transition-colors ${
-                  state === "next" ? "text-muted" : "text-foreground"
-                }`}
-              >
-                <span className="bg-line relative h-1 overflow-hidden rounded-sm">
-                  {state === "done" && (
-                    <span className="bg-accent absolute inset-0" />
-                  )}
-                  {state === "now" && (
-                    <span
-                      aria-hidden
-                      className="bg-accent absolute inset-0 origin-left"
-                      style={{
-                        animation: "bar 1600ms ease-out infinite alternate",
-                      }}
-                    />
-                  )}
-                </span>
-                {step.short}
-              </li>
-            );
-          })}
-        </ol>
-
-        {elapsed >= SLOW_AFTER && (
-          <p className="text-muted text-xs [word-break:auto-phrase]">
-            時間がかかっています。この画面のまま、もう少しお待ちください
-          </p>
-        )}
-      </div>
     </div>
   );
 }

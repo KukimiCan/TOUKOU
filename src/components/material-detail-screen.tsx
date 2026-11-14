@@ -4,6 +4,7 @@
 // - 資料が見つからない（404：無い資料、他人の資料）ときは、一覧へ戻る案内を出す
 // - 読み込み中は、画面の形に近い骨格（MaterialDetailSkeleton）を出す。page.tsx と loading.tsx でも同じものを使う
 // - 読み込めなかったとき・ログインしていないときは、それぞれの表示を出す
+// - 解説を裏で作り終えたら（この資料のものなら）読み直し、解説を出す（generation-provider.tsx の lastCompleted）
 "use client";
 
 import { FileQuestion } from "lucide-react";
@@ -18,6 +19,7 @@ import {
 import { ButtonLink } from "./ui/button-link";
 import { Screen } from "./ui/screen";
 import { ApiError, fetchApi } from "./fetch-api";
+import { useGeneration } from "./generation-provider";
 import { LoadError } from "./load-error";
 import { MaterialDetail } from "./material-detail";
 
@@ -42,17 +44,13 @@ async function loadMaterial(id: string) {
   return { detail, courseName };
 }
 
-export function MaterialDetailScreen({
-  id,
-  autoGenerate = false,
-}: {
-  id: string;
-  // 開いたらすぐに解説を作り始める（板書を送った直後）
-  autoGenerate?: boolean;
-}) {
+export function MaterialDetailScreen({ id }: { id: string }) {
   const [load, setLoad] = useState<Load>({ status: "loading" });
   // 「もう一度読み込む」を押した回数。変わるたびに読み込み直す
   const [attempt, setAttempt] = useState(0);
+  // 裏で作った解説が、この資料のものとして終わったとき（その知らせの物。違う資料なら null）
+  const { lastCompleted } = useGeneration();
+  const finishedHere = lastCompleted?.materialId === id ? lastCompleted : null;
 
   useEffect(() => {
     // 読み込みの途中で画面を離れたら、結果を使わない
@@ -67,7 +65,8 @@ export function MaterialDetailScreen({
     return () => {
       ignore = true;
     };
-  }, [id, attempt]);
+    // 解説が終わったときは、骨格に戻さずに読み直す（finishedHere が変わったとき）
+  }, [id, attempt, finishedHere]);
 
   function retry() {
     setLoad({ status: "loading" });
@@ -112,13 +111,7 @@ export function MaterialDetailScreen({
     );
   }
 
-  return (
-    <MaterialDetail
-      detail={load.detail}
-      courseName={load.courseName}
-      autoGenerate={autoGenerate}
-    />
-  );
+  return <MaterialDetail detail={load.detail} courseName={load.courseName} />;
 }
 
 // 読み込み中の骨格。見出し、元の画像、操作の順に、実際の画面と同じ並びで出す

@@ -3,12 +3,11 @@
 // 1. 「撮る」でカメラを開く（capture を付けた入力欄はカメラしか開かないので、「写真から選ぶ」を別に置く）
 // 2. 撮ったらすぐモーダルを開き、縮小した画像と科目を出す。科目は時間割から
 //    「今の授業」か「直前の授業」を選んでおく（違えば押して選び直す）
-// 3. 「送る」で API（POST /api/materials）に送り、資料の詳細へ移ってそのまま解説を作り始める（?generate=1）
+// 3. 「送る」で API（POST /api/materials）に送り、モーダルを閉じて元の画面に残る。解説は裏で作り、終わったら通知で知らせる（generation-provider.tsx）
 // 失敗したときは、理由（形式・大きさ・通信）を見出しで分けて出す。
 "use client";
 
 import { Camera, CircleAlert, ImagePlus, RotateCcw, Send } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import type { Course, DayOfWeek } from "@/contracts/courses";
@@ -23,6 +22,7 @@ import { Button, buttonClass } from "./ui/button";
 import { Modal } from "./ui/modal";
 import { Spinner } from "./ui/spinner";
 import { ApiError, errorMessage, fetchApi } from "./fetch-api";
+import { useGeneration } from "./generation-provider";
 import { ImageError, resizeImage } from "./resize-image";
 
 type Props = {
@@ -170,7 +170,7 @@ export function BoardUpload({
   defaultCourseId,
   place,
 }: Props) {
-  const router = useRouter();
+  const { startGeneration, notifyChanged } = useGeneration();
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<Picked | null>(null);
   // 画像を縮小している間は true
@@ -244,9 +244,14 @@ export function BoardUpload({
     setUploading(true);
     try {
       const { material } = await upload(body);
-      // 詳細へ移って、そのまま解説と確認問題を作り始める
-      router.push(`/materials/${material.id}?generate=1`);
-      // 移るまでの間も「送っています」のままにする
+      // 送れたら、モーダルを閉じて元の画面に残る。一覧は取り直し、解説は裏で作る（終わったら通知）
+      const courseName =
+        courses.find((c) => c.id === fields.data.courseId)?.name ?? "授業";
+      notifyChanged();
+      startGeneration(material.id, courseName);
+      setUploading(false);
+      setOpen(false);
+      setPicked(null);
     } catch (e) {
       setFailure(uploadFailure(e));
       setUploading(false);
