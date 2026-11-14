@@ -48,8 +48,10 @@ function toRequestBody(body: unknown) {
   };
 }
 
-// GET の結果を覚えておく時間。タブを行き来したとき、この間はすぐに表示する（#206）
-const CACHE_MS = 30_000;
+// GET の結果は、ログアウトするまで（変更があるまで）覚えておく（#210）。
+// 覚えた結果はすぐに返し、前に取ってから少し経っていれば、裏で取り直して次の表示に使う。
+// 覚える場所はメモリ（タブを閉じれば消える）。講義資料を端末に残さないため、localStorage や cookie には置かない
+const REVALIDATE_MS = 5_000;
 
 type Cached = { status: number; contentType: string | null; body: string };
 
@@ -57,7 +59,7 @@ type Cached = { status: number; contentType: string | null; body: string };
 // 取っている途中のものも覚えるので、同じ URL を同時に呼んでも通信は 1 本になる
 const getCache = new Map<string, { at: number; result: Promise<Cached> }>();
 
-// 何かを変えた（POST・PATCH・DELETE）ら、覚えたものは古くなるので全部捨てる
+// 何かを変えた（POST・PATCH・DELETE。ログインとログアウトも含む）ら、覚えたものは古くなるので全部捨てる
 function clearCache() {
   getCache.clear();
 }
@@ -87,8 +89,37 @@ async function readForCache(url: string): Promise<Cached> {
   };
 }
 
+// 取りに行き、取れたら覚えている結果と入れ替える。失敗したら、前に覚えていた結果を残す
+function load(url: string) {
+  const previous = getCache.get(url);
+  const result = readForCache(url);
+  const entry = { at: Date.now(), result };
+  if (previous) {
+    // 取り直しの最中に、同じ取り直しを重ねて始めないよう、前の結果の時刻も進めておく
+    previous.at = entry.at;
+  } else {
+    getCache.set(url, entry);
+  }
+  result.then(
+    () => {
+      if (getCache.get(url) === (previous ?? entry)) getCache.set(url, entry);
+    },
+    () => {
+      if (getCache.get(url) === entry) getCache.delete(url);
+    },
+  );
+  return previous ?? entry;
+}
+
+// 先に取っておく。ログイン後に、各タブで使うデータをまとめて取り、初めて開くタブもすぐ表示する
+export function prefetchApi(urls: readonly string[]) {
+  for (const url of urls) {
+    if (!getCache.has(url)) load(url);
+  }
+}
+
 // API を呼び、成功したら Response を返す。失敗したら ApiError を投げる。
-// GET は少しの間だけ結果を覚え、同じ URL ならその結果を返す（失敗した結果は覚えない）
+// GET は結果を覚え、同じ URL ならすぐその結果を返す（失敗した結果は覚えない）
 export async function fetchApi(
   url: string,
   { method = "GET", body }: Options = {},
@@ -103,15 +134,11 @@ export async function fetchApi(
     }
   }
 
-  const now = Date.now();
-  let entry = getCache.get(url);
-  if (!entry || now - entry.at > CACHE_MS) {
-    const result = readForCache(url);
-    entry = { at: now, result };
-    getCache.set(url, entry);
-    result.catch(() => {
-      if (getCache.get(url) === entry) getCache.delete(url);
-    });
+  const entry = getCache.get(url) ?? load(url);
+  if (Date.now() - entry.at > REVALIDATE_MS) {
+    // 古い結果を見せたまま、裏で取り直す。取れたら次から新しい方を使う
+    entry.at = Date.now();
+    void entry.result.then(() => load(url)).catch(() => {});
   }
 
   const cached = await entry.result;
