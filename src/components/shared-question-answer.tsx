@@ -1,14 +1,15 @@
 // front 担当のファイル。
 // 共有された問題に回答する（#72）。選択肢を 1 つ選んで「回答する」を押す。
-// - 上に「選ぶ → 回答する → 答え合わせ」の流れを出し、いまどこかが分かるようにする（初めて開いた人向け）
-// - 選択肢は行全体が押せる（スマホでも 56px 以上）。選んだものは色と塗りつぶした記号ではっきり分かる
+// - 問題文・選択肢・「回答する」が 1 画面に収まる。選択肢が多くて収まらないときは、問題の部分だけがスクロールし、
+//   「回答する」は常に見えている
+// - 選択肢は行全体が押せる。選んだものは色と塗りつぶした記号ではっきり分かる
 // - 回答前の問題には、正解も解説も入っていない（src/contracts/questions.ts の SharedQuestion）
-// - 回答したら、選択肢に正解・自分の回答の印を付け、下に正誤と解説を出す（#73）
+// - 回答したら、選択肢に正解・自分の回答の印を付け、「回答する」の場所に正誤と解説を入れ替えて出す（#73）
 // - 回答は API（POST /api/shared/[shareId]/answers）に送る（#156）。失敗したら理由を出し、もう一度押せるようにする
 "use client";
 
-import { Check, Send } from "lucide-react";
-import { useState } from "react";
+import { Check, Send, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   type AnswerResult,
@@ -37,57 +38,6 @@ async function submitAnswer(
   return answerResultResponseSchema.parse(await res.json()).result;
 }
 
-const STEPS = ["選ぶ", "回答する", "答え合わせ"];
-
-// 回答の流れと、いまの段階
-function Steps({ current }: { current: number }) {
-  return (
-    <ol aria-label="回答の流れ" className="flex items-center gap-2 text-xs">
-      {STEPS.map((step, i) => {
-        const done = i < current;
-        const now = i === current;
-        return (
-          <li
-            key={step}
-            aria-current={now ? "step" : undefined}
-            className="flex items-center gap-2 whitespace-nowrap"
-          >
-            {i > 0 && (
-              <span
-                aria-hidden
-                className={`h-px w-4 transition-colors sm:w-6 ${done || now ? "bg-accent" : "bg-line"}`}
-              />
-            )}
-            <span
-              className={`flex items-center gap-1.5 transition-colors ${
-                now
-                  ? "text-foreground font-semibold"
-                  : done
-                    ? "text-accent"
-                    : "text-muted"
-              }`}
-            >
-              <span
-                aria-hidden
-                className={`font-display inline-flex size-5 items-center justify-center rounded-full border text-xs transition-colors ${
-                  now
-                    ? "border-foreground bg-foreground text-background"
-                    : done
-                      ? "border-accent text-accent"
-                      : "border-line"
-                }`}
-              >
-                {done ? <Check className="size-3" /> : i + 1}
-              </span>
-              {step}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
 export function SharedQuestionAnswer({ question }: Props) {
   // 選んだ選択肢の番号（まだ選んでいなければ null）
   const [selected, setSelected] = useState<number | null>(null);
@@ -97,7 +47,6 @@ export function SharedQuestionAnswer({ question }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const answered = result !== null;
-  const step = answered ? 2 : selected === null ? 0 : 1;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -114,59 +63,59 @@ export function SharedQuestionAnswer({ question }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-      <Steps current={step} />
+    <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+      {/* 問題の部分。収まらないときだけ、ここがスクロールする（広い画面では、結果が選択肢のすぐ下に来るよう伸ばさない） */}
+      <div className="-mx-1 min-h-0 overflow-y-auto overscroll-contain px-1 pb-3">
+        <fieldset disabled={submitting || answered} className="flex flex-col">
+          <legend className="mb-4 text-[1.0625rem] leading-relaxed font-semibold [word-break:auto-phrase]">
+            {question.prompt}
+          </legend>
+          <div className="flex flex-col gap-2">
+            {question.choices.map((choice, i) => (
+              <ChoiceOption
+                key={i}
+                index={i}
+                choice={choice}
+                selected={selected === i}
+                answered={answered}
+                isCorrect={answered && i === result.correctIndex}
+                onSelect={() => setSelected(i)}
+              />
+            ))}
+          </div>
+        </fieldset>
+      </div>
 
-      <fieldset disabled={submitting || answered} className="flex flex-col">
-        <legend className="mb-5 text-lg leading-relaxed font-semibold [word-break:auto-phrase]">
-          {question.prompt}
-        </legend>
-        <div className="flex flex-col gap-2.5">
-          {question.choices.map((choice, i) => (
-            <ChoiceOption
-              key={i}
-              index={i}
-              choice={choice}
-              selected={selected === i}
-              answered={answered}
-              isCorrect={answered && i === result.correctIndex}
-              onSelect={() => setSelected(i)}
-            />
-          ))}
-        </div>
-      </fieldset>
-
-      {!answered && (
-        <div className="flex flex-col gap-2">
-          <Button
-            type="submit"
-            disabled={selected === null}
-            loading={submitting}
-            icon={<Send aria-hidden className="size-4" />}
-            className="w-full py-3.5 text-base whitespace-nowrap"
-          >
-            {submitting ? "答え合わせをしています" : "回答する"}
-          </Button>
-          {selected === null && (
-            <p className="text-muted text-center text-xs">
-              選択肢を 1 つ選ぶと、回答できます
-            </p>
-          )}
-        </div>
-      )}
-
-      {error && (
-        <p
-          role="alert"
-          className="text-danger text-sm leading-relaxed [word-break:auto-phrase]"
-        >
-          {error}
-        </p>
-      )}
-
-      {answered && (
-        <AnswerResultView result={result} choices={question.choices} />
-      )}
+      {/* スマホでは親指の届く画面の下に、広い画面では選択肢のすぐ下に置く */}
+      <div className="border-line flex shrink-0 flex-col gap-2 border-t pt-3 max-sm:mt-auto">
+        {answered ? (
+          <AnswerResultView result={result} />
+        ) : (
+          <>
+            {error && (
+              <p
+                role="alert"
+                className="text-danger text-sm [word-break:auto-phrase]"
+              >
+                {error}
+              </p>
+            )}
+            <Button
+              type="submit"
+              disabled={selected === null}
+              loading={submitting}
+              icon={<Send aria-hidden className="size-4" />}
+              className="w-full py-3 text-base"
+            >
+              {submitting
+                ? "答え合わせをしています"
+                : selected === null
+                  ? "選択肢を選んでください"
+                  : "回答する"}
+            </Button>
+          </>
+        )}
+      </div>
     </form>
   );
 }
@@ -187,6 +136,12 @@ function ChoiceOption({
   onSelect: () => void;
 }) {
   const isWrongPick = answered && selected && !isCorrect;
+
+  // 答え合わせのあと、自分の回答が問題の部分の外に隠れていたら、見える位置まで動かす
+  const ref = useRef<HTMLLabelElement>(null);
+  useEffect(() => {
+    if (answered && selected) ref.current?.scrollIntoView({ block: "nearest" });
+  }, [answered, selected]);
 
   // 回答の前は「選んだか」、回答のあとは「正解か・自分の回答か」で見た目を変える
   const tone = isCorrect
@@ -209,7 +164,8 @@ function ChoiceOption({
 
   return (
     <label
-      className={`has-[input:focus-visible]:outline-accent flex min-h-14 items-center gap-3 rounded-sm border px-4 py-3 transition-colors duration-200 has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 ${
+      ref={ref}
+      className={`has-[input:focus-visible]:outline-accent flex min-h-12 items-center gap-3 rounded-sm border px-3.5 py-2.5 transition-colors duration-200 has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 ${
         answered ? "cursor-default" : "cursor-pointer active:scale-[0.995]"
       } ${tone}`}
     >
@@ -226,16 +182,20 @@ function ChoiceOption({
       <span className="flex-1 leading-relaxed [word-break:auto-phrase]">
         {choice}
       </span>
-      {answered && (isCorrect || selected) && (
-        <span className="flex shrink-0 flex-col items-end gap-0.5 text-xs font-semibold whitespace-nowrap">
-          {isCorrect && (
-            <span className="text-success inline-flex items-center gap-1">
-              <Check aria-hidden className="size-3.5" />
-              正解
-            </span>
-          )}
-          {selected && <span className="text-muted">あなたの回答</span>}
+      {isCorrect && (
+        <span className="text-success inline-flex shrink-0 items-center gap-1 text-xs font-semibold whitespace-nowrap">
+          <Check aria-hidden className="size-3.5" />
+          正解
         </span>
+      )}
+      {isWrongPick && (
+        <span className="text-danger inline-flex shrink-0 items-center gap-1 text-xs font-semibold whitespace-nowrap">
+          <X aria-hidden className="size-3.5" />
+          あなたの回答
+        </span>
+      )}
+      {answered && isCorrect && selected && (
+        <span className="sr-only">（あなたの回答）</span>
       )}
     </label>
   );
