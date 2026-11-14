@@ -1,18 +1,23 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Barlow_Condensed, Zen_Kaku_Gothic_New } from "next/font/google";
 import "./globals.css";
-import { Suspense } from "react";
 
-import { LogoutButton } from "@/components/logout-button";
+import { SiteNav } from "@/components/site-nav";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// 本文と見出し：角ばった日本語の書体（明朝は使わない）
+const body = Zen_Kaku_Gothic_New({
+  variable: "--font-body",
+  weight: ["400", "500", "700"],
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// ラベルと数字：細い英字の書体
+const label = Barlow_Condensed({
+  variable: "--font-label",
+  weight: ["500", "600"],
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -24,13 +29,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="ja"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${body.variable} ${label.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <Suspense fallback={null}>
-          <LogoutButton />
-        </Suspense>
-        {children}
+        <SiteNav />
+        <div className="flex w-full flex-1 flex-col">{children}</div>
       </body>
     </html>
   );
