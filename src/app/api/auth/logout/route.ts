@@ -5,6 +5,8 @@ import { connection } from "next/server";
 import { logoutResponseSchema } from "@/contracts/auth";
 import { createClient } from "@/lib/supabase/server";
 
+const noStore = { "Cache-Control": "private, no-store" };
+
 export async function POST() {
   await connection();
 
@@ -13,9 +15,11 @@ export async function POST() {
   if (error) {
     return Response.json(
       { error: "ログアウトできませんでした" },
-      { status: 500 },
+      { status: 500, headers: noStore },
     );
   }
 
-  return Response.json(logoutResponseSchema.parse({ ok: true }));
+  return Response.json(logoutResponseSchema.parse({ ok: true }), {
+    headers: noStore,
+  });
 }

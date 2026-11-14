@@ -8,6 +8,8 @@ import { loginRequestSchema, loginResponseSchema } from "@/contracts/auth";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
+const noStore = { "Cache-Control": "private, no-store" };
+
 export async function POST(request: Request) {
   await connection();
 
@@ -16,14 +18,14 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return Response.json(
       { error: "メールアドレスとパスワードを入力してください" },
-      { status: 400 },
+      { status: 400, headers: noStore },
     );
   }
 
   if (!hasSupabaseEnv()) {
     return Response.json(
       { error: "ログインの設定が済んでいません" },
-      { status: 500 },
+      { status: 500, headers: noStore },
     );
   }
 
@@ -32,9 +34,11 @@ export async function POST(request: Request) {
   if (error) {
     return Response.json(
       { error: "メールアドレスかパスワードが違います" },
-      { status: 401 },
+      { status: 401, headers: noStore },
     );
   }
 
-  return Response.json(loginResponseSchema.parse({ ok: true }));
+  return Response.json(loginResponseSchema.parse({ ok: true }), {
+    headers: noStore,
+  });
 }
