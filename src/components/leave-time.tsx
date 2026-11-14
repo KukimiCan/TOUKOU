@@ -1,5 +1,5 @@
 // front 担当のファイル。
-// 次の授業カードの下の帯「移動を始める目安 12:10（あと 8 分）」（#62）。
+// 次の授業カードの下の帯「出発の目安 12:10（あと 8 分）」（#62）。移動を始める時刻のこと。
 // 移動を始める時刻（leaveAt）を過ぎたら、帯を失敗の色（text-danger）に変え、太字で急ぐよう伝える。
 // 時計（use-class-clock.ts）は次の授業カードが持ち、いまの時刻を受け取る。
 // ホームを開いたまま移動の時刻を過ぎたら、自動で表示が切り替わる。
@@ -48,7 +48,7 @@ export function LeaveTime({ leaveAt, now }: Props) {
         <p className="flex items-center justify-between gap-3 px-5 py-4">
           <span className="text-muted flex items-center gap-2 text-sm whitespace-nowrap">
             <Footprints aria-hidden className="size-4 shrink-0" />
-            移動を始める目安
+            出発の目安
           </span>
           <span className="flex items-baseline gap-2 whitespace-nowrap">
             <span className="font-display text-2xl leading-none font-semibold tracking-wide tabular-nums">
