@@ -3,13 +3,13 @@
 // - primary：画面で一番大事な操作（墨色の塗り）
 // - secondary：その次の操作（細い枠）
 // - ghost：目立たせない操作（文字だけ）
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 import { Spinner } from "./spinner";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 
-const variants: Record<Variant, string> = {
+const variants: Record<ButtonVariant, string> = {
   primary:
     "bg-foreground text-background hover:bg-foreground/85 disabled:hover:bg-foreground",
   secondary:
@@ -18,8 +18,17 @@ const variants: Record<Variant, string> = {
   danger: "border border-danger/40 text-danger hover:bg-danger/5",
 };
 
-type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: Variant;
+// ボタンの見た目のクラス。リンクやラベルをボタンの見た目にしたいときにも使う
+export function buttonClass(
+  variant: ButtonVariant = "primary",
+  className = "",
+) {
+  return `inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-4 py-2.5 text-sm font-semibold transition-colors ${variants[variant]} ${className}`;
+}
+
+// ComponentProps<"button"> なので ref も渡せる（React 19）
+type Props = ComponentProps<"button"> & {
+  variant?: ButtonVariant;
   // 処理中。回る印を出して、押せないようにする
   loading?: boolean;
   // 文字の前に置くアイコン（lucide-react）
@@ -40,7 +49,7 @@ export function Button({
       {...rest}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold ${variants[variant]} ${className}`}
+      className={buttonClass(variant, className)}
     >
       {loading ? <Spinner /> : icon}
       {children}

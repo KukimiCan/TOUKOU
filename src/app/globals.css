@@ -29,7 +29,8 @@
   --color-success: var(--success);
   --font-sans: var(--font-body);
   --font-display: var(--font-label);
-  --font-mono: var(--font-label);
+  /* 数式・コード・URL 用の等幅の書体（Barlow Condensed は数式に向かない） */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 /* 要素の基本の見た目。@layer base に入れて、各画面の Tailwind のクラスで上書きできるようにする */
