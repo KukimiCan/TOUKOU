@@ -1,7 +1,7 @@
 // front 担当のファイル。
 // 共有された問題の画面の中身（#156）。回答の操作は shared-question-answer.tsx が行う。
 // - 開いたときに、問題（GET /api/shared/[shareId]）を API から読み込む。ログインは要らない
-// - 読み込み中は、問題の形に近い骨格を出す（page.tsx の読み込み中の表示でも使う）
+// - 読み込み中は、問題の形に近い骨格を出す（page.tsx の読み込み中の表示でも使う）。どの表示も画面の高さに収める
 // - 問題が見つからない（404：URL が違う、公開されていない）ときは、その案内だけを出す
 // - 読み込めなかったときは、理由と「もう一度読み込む」ボタンを出す
 //   （この画面はログインしていない人が開くので、ログインへの案内は出さない）
@@ -29,22 +29,25 @@ async function loadSharedQuestion(shareId: string) {
   return sharedQuestionResponseSchema.parse(await res.json()).question;
 }
 
-// 読み込み中の骨格（流れ、問題文、選択肢、回答ボタン）
+// 読み込み中の骨格（問題文、選択肢、回答ボタン）
 export function SharedQuestionSkeleton() {
   return (
-    <div role="status" aria-live="polite" className="flex flex-col gap-6">
+    <div role="status" aria-live="polite" className="flex flex-1 flex-col">
       <span className="sr-only">問題を読み込んでいます</span>
-      <div aria-hidden className="skeleton h-5 w-56" />
-      <div aria-hidden className="flex flex-col gap-2">
-        <div className="skeleton h-5 w-full" />
-        <div className="skeleton h-5 w-2/3" />
+      <div aria-hidden className="flex flex-1 flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <div className="skeleton h-5 w-full" />
+          <div className="skeleton h-5 w-2/3" />
+        </div>
+        <div className="flex flex-col gap-2">
+          {[0, 1, 2, 3].map((n) => (
+            <div key={n} className="skeleton h-12 w-full" />
+          ))}
+        </div>
       </div>
-      <div aria-hidden className="flex flex-col gap-2.5">
-        {[0, 1, 2, 3].map((n) => (
-          <div key={n} className="skeleton h-14 w-full" />
-        ))}
+      <div aria-hidden className="border-line border-t pt-3">
+        <div className="skeleton h-12 w-full" />
       </div>
-      <div aria-hidden className="skeleton h-12 w-full" />
     </div>
   );
 }
@@ -62,13 +65,13 @@ function Notice({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="border-line flex flex-col items-center gap-4 border-y px-4 py-12 text-center">
+    <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 pb-8 text-center">
       <span className="bg-accent-soft text-accent flex size-12 items-center justify-center rounded-full">
         {icon}
       </span>
       <div role="alert" className="flex flex-col gap-1">
         <p className="font-semibold">{title}</p>
-        <p className="text-muted text-sm leading-relaxed [word-break:auto-phrase]">
+        <p className="text-muted text-sm [word-break:auto-phrase]">
           {children}
         </p>
       </div>

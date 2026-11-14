@@ -1,9 +1,11 @@
 // front 担当のファイル。
 // 共有された問題に回答したあとの、正誤と解説（#73）。選択肢の頭の記号（ChoiceMark）もここに置き、問題の画面と共有ページで使い回す。
+// - 回答ボタンがあった場所（画面の下）に、入れ替えて出す。画面を下に伸ばさない
+//   正解・自分の回答の印は、選択肢の側に付く（shared-question-answer.tsx）
 // - 「正解」「不正解」を、色だけでなく文字とアイコンでも伝える
 // - 正解のときは、印が小さく弾んで輪が広がる（短く控えめに。動きを減らす設定のときは止まる）
 // - 不正解のときは責める色にせず、正しい選択肢と解説を落ち着いて読めるようにする
-// - 出したときに、ここへ画面を動かして読み上げソフトにも伝える（スマホでは回答ボタンの下に隠れやすいため）
+// - 解説が長いときは、解説の部分だけがスクロールする
 "use client";
 
 import { CircleCheck, CircleX } from "lucide-react";
@@ -12,11 +14,6 @@ import { useEffect, useRef } from "react";
 import type { AnswerResult } from "@/contracts/questions";
 
 import { CHOICE_LABELS } from "./question-format";
-
-type Props = {
-  result: AnswerResult;
-  choices: string[];
-};
 
 type MarkTone = "plain" | "selected" | "correct" | "wrong";
 
@@ -45,105 +42,67 @@ export function ChoiceMark({
   );
 }
 
-export function AnswerResultView({ result, choices }: Props) {
+export function AnswerResultView({ result }: { result: AnswerResult }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
 
+  // 出したときに、読み上げソフトにも結果を伝える（画面は動かさない）
   useEffect(() => {
-    const heading = headingRef.current;
-    if (!heading) return;
-    heading.focus({ preventScroll: true });
-    const reduce = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    heading.scrollIntoView({
-      behavior: reduce ? "auto" : "smooth",
-      block: "start",
-    });
+    headingRef.current?.focus({ preventScroll: true });
   }, []);
 
   return (
     <section
       aria-labelledby="answer-result-heading"
-      className="flex flex-col gap-6 transition-[opacity,translate] duration-250 starting:translate-y-2 starting:opacity-0"
+      className="flex min-h-0 flex-col gap-2 transition-[opacity,translate] duration-250 starting:translate-y-2 starting:opacity-0"
     >
-      {result.correct ? (
-        <div className="border-success/40 bg-success/10 flex items-center gap-4 rounded-sm border p-4">
-          <span className="relative flex size-12 shrink-0 items-center justify-center">
+      <div className="flex items-center gap-3">
+        {result.correct ? (
+          <span className="relative flex size-9 shrink-0 items-center justify-center">
             {/* 広がって消える輪（一度だけ） */}
             <span
               aria-hidden
-              className="border-success absolute inset-1 scale-[1.7] rounded-full border-2 opacity-0 transition-[scale,opacity] duration-700 ease-out starting:scale-90 starting:opacity-70"
+              className="border-success absolute inset-0.5 scale-[1.8] rounded-full border-2 opacity-0 transition-[scale,opacity] duration-700 ease-out starting:scale-90 starting:opacity-70"
             />
             <CircleCheck
               aria-hidden
               strokeWidth={1.75}
-              className="text-success size-11 transition-[scale] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] starting:scale-50"
+              className="text-success size-9 transition-[scale] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] starting:scale-50"
             />
           </span>
-          <div className="flex flex-col gap-0.5">
-            <h2
-              id="answer-result-heading"
-              ref={headingRef}
-              tabIndex={-1}
-              className="text-success scroll-mt-6 text-2xl font-bold outline-none"
-            >
-              正解
-            </h2>
-            <p className="text-sm leading-relaxed [word-break:auto-phrase]">
-              解説で、なぜそうなるかも確かめておきましょう。
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-4">
-          <div className="border-line bg-surface flex items-center gap-4 rounded-sm border p-4">
-            <CircleX
-              aria-hidden
-              strokeWidth={1.75}
-              className="text-danger size-11 shrink-0"
-            />
-            <div className="flex flex-col gap-0.5">
-              <h2
-                id="answer-result-heading"
-                ref={headingRef}
-                tabIndex={-1}
-                className="scroll-mt-6 text-2xl font-bold outline-none"
-              >
-                不正解
-              </h2>
-              <p className="text-muted text-sm leading-relaxed [word-break:auto-phrase]">
-                正しい答えと解説を読んで、次に生かしましょう。
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <p className="text-muted text-xs font-semibold">正しい答え</p>
-            <p className="flex items-start gap-3">
-              <ChoiceMark
-                label={CHOICE_LABELS[result.correctIndex]}
-                tone="correct"
-              />
-              <span className="sr-only">
-                {CHOICE_LABELS[result.correctIndex]}.
-              </span>
-              <span className="pt-0.5 leading-relaxed font-semibold [word-break:auto-phrase]">
-                {choices[result.correctIndex]}
-              </span>
-            </p>
-          </div>
-        </div>
-      )}
+        ) : (
+          <CircleX
+            aria-hidden
+            strokeWidth={1.75}
+            className="text-danger size-9 shrink-0"
+          />
+        )}
+        <h2
+          id="answer-result-heading"
+          ref={headingRef}
+          tabIndex={-1}
+          className={`text-xl font-bold outline-none ${result.correct ? "text-success" : ""}`}
+        >
+          {result.correct ? "正解" : "不正解"}
+        </h2>
+        {!result.correct && (
+          <p className="text-muted text-sm whitespace-nowrap">
+            正しい答えは
+            <span className="font-display text-success mx-1 text-lg font-semibold">
+              {CHOICE_LABELS[result.correctIndex]}
+            </span>
+          </p>
+        )}
+      </div>
 
-      <section className="border-accent/50 flex flex-col gap-1 border-l-2 pl-3">
+      <section className="border-accent/50 flex min-h-0 flex-col gap-0.5 border-l-2 pl-3">
         <h3 className="text-muted text-xs font-semibold">解説</h3>
-        <p className="leading-relaxed [word-break:auto-phrase]">
+        <p className="max-h-[24dvh] overflow-y-auto overscroll-contain text-sm leading-relaxed [word-break:auto-phrase]">
           {result.explanation}
         </p>
       </section>
 
-      <p className="text-muted text-xs leading-relaxed [word-break:auto-phrase]">
-        この問題と解説は AI
-        が作り、作った人が確認して公開したものです。間違っていることもあります。
+      <p className="text-muted text-xs [word-break:auto-phrase]">
+        AI が作った問題です。間違いがあるかもしれません。
       </p>
     </section>
   );
