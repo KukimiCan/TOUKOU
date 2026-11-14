@@ -91,6 +91,7 @@ cp .env.example .env.local
 
 VS Code で `.env.local` を開き、チームから受け取った値を `=` の後ろに入れます。
 
+- 共有問題への回答 API を動かすには、チームから安全な方法で受け取った `sb_secret_` で始まるキーを `SUPABASE_SECRET_KEY` に設定してください。サーバーだけで使うキーなので、`NEXT_PUBLIC_` を付けないでください。空欄だと回答を保存できません
 - **まだ値をもらっていなくても大丈夫です。** `AI_PROVIDER=mock` のままなら、AI のキーが無くても動きます
 - `.env.local` は Git に入らない設定になっています。**この中身を GitHub、issue、PR、公開のチャットに貼らないでください**
 

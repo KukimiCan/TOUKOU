@@ -4,7 +4,7 @@
 // DB の関数 answer_shared_question に渡し、保存と正誤・解説の受け取りを 1 回で行う（#157）。
 // 正誤は DB が決める（answers のトリガー）。
 import type { AnswerResult } from "@/contracts/questions";
-import { createClient } from "@/lib/supabase/server";
+import { createAnswerClient } from "@/lib/supabase/answer";
 
 // DB が「選択肢の番号が範囲外」と返したときのエラー
 export class InvalidChoiceError extends Error {}
@@ -14,7 +14,7 @@ export async function answerSharedQuestion(
   shareId: string,
   choiceIndex: number,
 ): Promise<AnswerResult | null> {
-  const supabase = await createClient();
+  const supabase = createAnswerClient();
   const { data, error } = await supabase.rpc("answer_shared_question", {
     target_share_id: shareId,
     target_choice_index: choiceIndex,
