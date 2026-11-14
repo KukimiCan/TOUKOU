@@ -43,17 +43,35 @@
     background: var(--background);
     color: var(--foreground);
     font-family: var(--font-body), system-ui, sans-serif;
+    font-size: 1rem;
     line-height: 1.75;
-    letter-spacing: 0.01em;
+    letter-spacing: 0.02em;
+    font-kerning: normal;
+    /* 日本語の改行：文節で折り返し、句読点の禁則を守り、最後の行が 1 文字だけにならないようにする */
+    word-break: auto-phrase;
+    line-break: strict;
+    overflow-wrap: anywhere;
+    text-wrap: pretty;
   }
 
   /* 見出しは少し締める。ラベルと数字は英字の細い書体 */
   h1,
   h2,
-  h3 {
+  h3,
+  h4 {
     font-weight: 700;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
     line-height: 1.4;
+    /* 見出しは字間を詰めて締め、行の長さをそろえる */
+    font-feature-settings: "palt";
+    text-wrap: balance;
+  }
+
+  /* ボタン・ラベル・ナビの短い文字も、字間を詰めて締める */
+  button,
+  label,
+  nav {
+    font-feature-settings: "palt";
   }
 
   /* 押せるものは、押した感触を返す */
