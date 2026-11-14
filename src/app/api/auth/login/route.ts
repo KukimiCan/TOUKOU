@@ -6,6 +6,7 @@ import { connection } from "next/server";
 
 import { loginRequestSchema, loginResponseSchema } from "@/contracts/auth";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
+import { createLoginClient } from "@/lib/supabase/login";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -20,19 +21,51 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!hasSupabaseEnv()) {
+  if (
+    !hasSupabaseEnv() ||
+    !process.env.SUPABASE_SECRET_KEY?.startsWith("sb_secret_")
+  ) {
     return Response.json(
       { error: "ログインの設定が済んでいません" },
       { status: 500 },
     );
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const loginClient = createLoginClient(request);
+  const { data, error } = await loginClient.auth.signInWithPassword(
+    parsed.data,
+  );
   if (error) {
+    if (error.status === 429) {
+      return Response.json(
+        { error: "しばらく待ってからもう一度お試しください" },
+        { status: 429 },
+      );
+    }
     return Response.json(
       { error: "メールアドレスかパスワードが違います" },
       { status: 401 },
+    );
+  }
+
+  if (!data.session) {
+    return Response.json(
+      { error: "ログインできませんでした" },
+      { status: 500 },
+    );
+  }
+
+  // サーバー専用キーを持つクライアントのセッションを Cookie に保存しない。
+  // 利用者のセッションは公開用キーの SSR クライアントに渡して保存する。
+  const supabase = await createClient();
+  const { error: sessionError } = await supabase.auth.setSession({
+    access_token: data.session.access_token,
+    refresh_token: data.session.refresh_token,
+  });
+  if (sessionError) {
+    return Response.json(
+      { error: "ログインできませんでした" },
+      { status: 500 },
     );
   }
 
