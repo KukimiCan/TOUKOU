@@ -36,9 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Suspense fallback={null}>
           <SiteNav />
         </Suspense>
-        <div className="flex w-full flex-1 flex-col pb-20 sm:pb-0">
-          {children}
-        </div>
+        <div className="flex w-full flex-1 flex-col">{children}</div>
       </body>
     </html>
   );

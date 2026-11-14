@@ -88,6 +88,9 @@ export function SiteNav() {
         </div>
       </header>
 
+      {/* スマホ：下のナビで内容が隠れないよう、画面の最後に余白を置く（body は縦並びなので order-last で最後に回す） */}
+      <div aria-hidden className="order-last h-20 shrink-0 sm:hidden" />
+
       {/* スマホの下の段：4 つの項目を、画面の端に固定する */}
       <nav
         aria-label="主なページ（スマホ）"
