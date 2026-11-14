@@ -1,5 +1,6 @@
 import { generateText, Output } from "ai";
 
+import { formatDuration } from "../format-duration";
 import { getModel, isMockAi } from "./index";
 import { mockFreeTimeSuggestion } from "./mocks/suggestion";
 import { suggestionPrompt } from "./prompts/suggestion";
@@ -37,7 +38,7 @@ export async function generateFreeTimeSuggestion(
 
     if (timingInstructions.test(output.text.normalize("NFKC"))) return fallback;
     const result = freeTimeSuggestionOutputSchema.safeParse({
-      text: `移動まであと${availableMinutes}分。${output.text}`,
+      text: `移動まであと${formatDuration(availableMinutes)}。${output.text}`,
     });
     return result.success ? result.data : fallback;
   } catch {
