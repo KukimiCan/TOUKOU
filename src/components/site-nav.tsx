@@ -15,7 +15,9 @@ import {
 } from "lucide-react";
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 
+import { prefetchApi } from "@/components/fetch-api";
 import { LogoutButton } from "@/components/logout-button";
 
 const items: { href: string; label: string; Icon: LucideIcon }[] = [
@@ -40,9 +42,24 @@ function PendingLine() {
   );
 }
 
+// 各タブで最初に使うデータ。ナビが出たら（ログイン中なら）先に取っておき、どのタブも開いた瞬間に出す（#210）
+const PREFETCH_URLS = [
+  "/api/courses",
+  "/api/settings",
+  "/api/materials",
+  "/api/questions",
+  "/api/answers/history",
+] as const;
+
 export function SiteNav() {
   const pathname = usePathname();
-  if (pathname === "/login" || pathname.startsWith("/q/")) return null;
+  const hidden = pathname === "/login" || pathname.startsWith("/q/");
+
+  useEffect(() => {
+    if (!hidden) prefetchApi(PREFETCH_URLS);
+  }, [hidden]);
+
+  if (hidden) return null;
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
