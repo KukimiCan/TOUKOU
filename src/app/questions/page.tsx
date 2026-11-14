@@ -3,7 +3,10 @@
 // 読み込みは questions-screen.tsx（ブラウザで動く部品）が行う。
 import type { Metadata } from "next";
 
-import { QuestionsScreen } from "@/components/questions-screen";
+import {
+  QuestionsHeader,
+  QuestionsScreen,
+} from "@/components/questions-screen";
 
 export const metadata: Metadata = {
   title: "問題 | TOUKOU",
@@ -11,13 +14,8 @@ export const metadata: Metadata = {
 
 export default function QuestionsPage() {
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-4 py-8">
-      <h1 className="text-2xl font-bold">問題</h1>
-      <p className="text-sm leading-relaxed opacity-80">
-        AI
-        が資料から作った確認問題です。問題文と解説を確かめてから公開すると、URL
-        で友達に送れます。
-      </p>
+    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-8">
+      <QuestionsHeader />
       <QuestionsScreen />
     </main>
   );

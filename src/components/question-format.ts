@@ -3,3 +3,8 @@
 
 // 選択肢の頭に付ける記号（選択肢は 2〜6 個）
 export const CHOICE_LABELS = ["A", "B", "C", "D", "E", "F"];
+
+// 問題の番号を 2 桁にそろえる（例：1 → "01"）。「Q01」のように見出しで使う
+export function questionNumber(n: number) {
+  return String(n).padStart(2, "0");
+}
