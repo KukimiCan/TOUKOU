@@ -1,7 +1,8 @@
 // front 担当のファイル。
 // 資料一覧の画面の中身（#69）。板書のアップロード欄（board-upload.tsx）と、資料一覧（materials-list.tsx）をまとめる。
 // - 開いたときに、資料（GET /api/materials）と科目（GET /api/courses）を API から読み込む
-// - 読み込み中・読み込めなかったとき・ログインしていないときは、それぞれの表示を出す
+// - 読み込み中は、画面の形に近い骨格（MaterialsSkeleton）を出す。loading.tsx でも同じものを使う
+// - 読み込めなかったとき・ログインしていないときは、それぞれの表示を出す
 "use client";
 
 import { useEffect, useState } from "react";
@@ -57,13 +58,7 @@ export function MaterialsScreen() {
     setAttempt((n) => n + 1);
   }
 
-  if (load.status === "loading") {
-    return (
-      <p role="status" className="py-12 text-center text-sm opacity-70">
-        資料を読み込んでいます…
-      </p>
-    );
-  }
+  if (load.status === "loading") return <MaterialsSkeleton />;
 
   if (load.status === "error") {
     return (
@@ -81,5 +76,36 @@ export function MaterialsScreen() {
       <BoardUpload courses={load.courses} />
       <MaterialsList materials={load.materials} courses={load.courses} />
     </>
+  );
+}
+
+// 読み込み中の骨格。上に板書の追加欄、下に資料の行を 3 つ
+export function MaterialsSkeleton() {
+  return (
+    <div role="status" aria-live="polite" className="flex flex-col gap-8">
+      <span className="sr-only">資料を読み込んでいます</span>
+      <div className="border-line flex flex-col gap-4 rounded-sm border p-4">
+        <div className="skeleton h-5 w-28" />
+        <div className="flex gap-2">
+          <div className="skeleton h-11 flex-1" />
+          <div className="skeleton h-11 flex-1" />
+        </div>
+      </div>
+      <div className="flex flex-col gap-3">
+        <div className="skeleton h-5 w-40" />
+        <div className="divide-line border-line flex flex-col divide-y border-y">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-3 py-3">
+              <div className="skeleton size-9" />
+              <div className="flex flex-1 flex-col gap-1.5">
+                <div className="skeleton h-4 w-16" />
+                <div className="skeleton h-3 w-24" />
+              </div>
+              <div className="skeleton h-5 w-16" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

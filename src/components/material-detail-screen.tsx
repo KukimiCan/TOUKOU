@@ -2,9 +2,11 @@
 // 資料詳細の画面の中身（#69）。中身の表示は material-detail.tsx が行う。
 // - 開いたときに、資料の詳細（GET /api/materials/[id]）と科目（GET /api/courses）を API から読み込む
 // - 資料が見つからない（404：無い資料、他人の資料）ときは、一覧へ戻る案内を出す
-// - 読み込み中・読み込めなかったとき・ログインしていないときは、それぞれの表示を出す
+// - 読み込み中は、画面の形に近い骨格（MaterialDetailSkeleton）を出す。page.tsx と loading.tsx でも同じものを使う
+// - 読み込めなかったとき・ログインしていないときは、それぞれの表示を出す
 "use client";
 
+import { FileQuestion } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -64,23 +66,27 @@ export function MaterialDetailScreen({ id }: { id: string }) {
     setAttempt((n) => n + 1);
   }
 
-  if (load.status === "loading") {
-    return (
-      <p role="status" className="py-12 text-center text-sm opacity-70">
-        資料を読み込んでいます…
-      </p>
-    );
-  }
+  if (load.status === "loading") return <MaterialDetailSkeleton />;
 
   if (load.status === "error") {
     // 無い資料は、読み込み直しても同じなので、一覧へ戻る案内だけを出す
     if (load.error instanceof ApiError && load.error.status === 404) {
       return (
         <div className="flex flex-col items-center gap-4 py-12 text-center">
-          <p role="alert">この資料は見つかりませんでした。</p>
+          <FileQuestion
+            aria-hidden
+            className="text-muted size-8"
+            strokeWidth={1.5}
+          />
+          <div role="alert" className="flex flex-col gap-1">
+            <p className="font-semibold">この資料は見つかりませんでした</p>
+            <p className="text-muted text-sm [word-break:auto-phrase]">
+              削除されたか、別のアカウントの資料かもしれません。
+            </p>
+          </div>
           <Link
             href="/materials"
-            className="rounded border border-current/30 px-6 py-3 font-semibold"
+            className="border-line bg-surface hover:border-foreground inline-flex items-center border px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors"
           >
             資料の一覧へ
           </Link>
@@ -98,4 +104,24 @@ export function MaterialDetailScreen({ id }: { id: string }) {
   }
 
   return <MaterialDetail detail={load.detail} courseName={load.courseName} />;
+}
+
+// 読み込み中の骨格。見出し、元の画像、解説の順に、実際の画面と同じ並びで出す
+export function MaterialDetailSkeleton() {
+  return (
+    <div role="status" aria-live="polite" className="flex flex-col gap-8">
+      <span className="sr-only">資料を読み込んでいます</span>
+      <div className="flex flex-col gap-2">
+        <div className="skeleton h-8 w-48" />
+        <div className="skeleton h-4 w-32" />
+      </div>
+      <div className="skeleton h-64 w-full" />
+      <div className="flex flex-col gap-3">
+        <div className="skeleton h-6 w-28" />
+        <div className="skeleton h-4 w-full" />
+        <div className="skeleton h-4 w-11/12" />
+        <div className="skeleton h-4 w-2/3" />
+      </div>
+    </div>
+  );
 }
