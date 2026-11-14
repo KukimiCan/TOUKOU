@@ -10,7 +10,7 @@ import { useState } from "react";
 
 import type { ReviewItem } from "@/contracts/home";
 
-import { SuggestionRow } from "./suggestion-chip";
+import { SuggestionRow } from "./suggestion-row";
 import { ButtonLink } from "./ui/button-link";
 import { Modal } from "./ui/modal";
 

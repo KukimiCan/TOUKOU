@@ -106,6 +106,7 @@ export function MaterialDetail({ detail, courseName, autoGenerate }: Props) {
   return (
     <Screen
       label={formatCreatedAt(material.createdAt)}
+      labelStyle="ja"
       title={courseName}
       width="max-w-5xl"
       actions={

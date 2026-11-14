@@ -4,10 +4,10 @@
 // - それ以外（通信できない、サーバーの不調など）：何が起きたかと次にどうするか、「もう一度読み込む」ボタンを出す
 // アイコン＋短い文＋ボタンの形にそろえる（docs/design.md「待ち時間と反応」）。
 import { CircleAlert, LogIn, RotateCw } from "lucide-react";
-import Link from "next/link";
 
 import { ApiError, errorMessage } from "./fetch-api";
 import { Button } from "./ui/button";
+import { ButtonLink } from "./ui/button-link";
 
 type Props = {
   error: unknown;
@@ -29,12 +29,13 @@ export function LoadError({ error, title, loginMessage, onRetry }: Props) {
           <LogIn className="size-5" />
         </span>
         <p className="max-w-sm [word-break:auto-phrase]">{loginMessage}</p>
-        <Link
+        <ButtonLink
           href="/login"
-          className="bg-foreground text-background hover:bg-foreground/85 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors"
+          variant="primary"
+          icon={<LogIn aria-hidden className="size-4" />}
         >
           ログインする
-        </Link>
+        </ButtonLink>
       </div>
     );
   }
