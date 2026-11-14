@@ -2,12 +2,16 @@
 // 時間割の設定の入力フォーム（移動の余裕時間と、1〜8 限の開始・終了時刻）（#58）。
 // 時限の数は 1〜8 限で固定にする（科目のフォームがいつも 1〜8 限を選べるのとそろえるため）。
 // 入力は contracts の zod スキーマ（settingsSchema）でチェックし、エラーは日本語で出す。
-// 保存している間はボタンを押せないようにし、保存できなかったときはメッセージを出す（#59）。
+// 保存している間はボタンに回る印を出し、保存できなかったときはメッセージを出す（#59）。
+// 入力欄・エラーの見た目は、科目のフォーム（course-form.tsx）とそろえる。
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { type Settings, settingsSchema } from "@/contracts/settings";
+
+import { FieldError, FormError, inputClass } from "./course-form";
+import { Button } from "./ui/button";
 
 type Errors = {
   travelBufferMinutes?: string;
@@ -30,8 +34,9 @@ export function SettingsForm({ initial, onSubmit }: Props) {
   const [errors, setErrors] = useState<Errors>(NO_ERRORS);
   // 保存できなかったときのメッセージ
   const [saveError, setSaveError] = useState<string | null>(null);
-  // 保存している間は true（ボタンを押せないようにする）
+  // 保存している間は true（ボタンに回る印を出し、押せないようにする）
   const [pending, setPending] = useState(false);
+  const id = useId();
   const periods = [...initial.periods].sort((a, b) => a.period - b.period);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -80,89 +85,101 @@ export function SettingsForm({ initial, onSubmit }: Props) {
     setPending(false);
   }
 
+  const bufferId = `${id}-buffer`;
+
   return (
     // noValidate：ブラウザの英語まじりの吹き出しではなく、下の日本語のメッセージで知らせる
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
-      <label className="flex flex-col gap-1">
-        <span className="text-sm font-semibold">移動の余裕時間</span>
-        <span className="text-sm opacity-70">
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor={bufferId} className="text-sm font-semibold">
+          移動の余裕時間
+        </label>
+        <p
+          id={`${bufferId}-hint`}
+          className="text-muted text-sm [word-break:auto-phrase]"
+        >
           授業が始まる何分前に移動を始めるか（0〜60 分）
-        </span>
-        <span className="flex items-center gap-2">
+        </p>
+        <div className="flex items-center gap-2">
           <input
+            id={bufferId}
             name="travelBufferMinutes"
             type="number"
             inputMode="numeric"
             min={0}
             max={60}
             defaultValue={initial.travelBufferMinutes}
-            className={`${inputClass} w-24`}
+            aria-invalid={errors.travelBufferMinutes ? true : undefined}
+            aria-describedby={
+              errors.travelBufferMinutes
+                ? `${bufferId}-hint ${bufferId}-error`
+                : `${bufferId}-hint`
+            }
+            className={`${inputClass} font-display max-w-24 tabular-nums`}
           />
-          分
-        </span>
+          <span className="text-sm">分</span>
+        </div>
         {errors.travelBufferMinutes && (
-          <span role="alert" className={errorClass}>
+          <FieldError id={`${bufferId}-error`}>
             {errors.travelBufferMinutes}
-          </span>
+          </FieldError>
         )}
-      </label>
+      </div>
 
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2 text-sm font-semibold">時限の時刻</legend>
-        {periods.map(({ period, start, end }) => (
-          <div key={period} className="flex flex-col gap-1">
-            <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
-              <span className="text-sm font-semibold">{period}限</span>
-              <input
-                name={`start-${period}`}
-                type="time"
-                defaultValue={start}
-                aria-label={`${period}限の開始時刻`}
-                className={`${inputClass} w-full`}
-              />
-              <span aria-hidden>〜</span>
-              <input
-                name={`end-${period}`}
-                type="time"
-                defaultValue={end}
-                aria-label={`${period}限の終了時刻`}
-                className={`${inputClass} w-full`}
-              />
+        {periods.map(({ period, start, end }) => {
+          const error = errors.periods[period];
+          const errorId = `${id}-period-${period}-error`;
+          const invalidProps = {
+            "aria-invalid": error ? true : undefined,
+            "aria-describedby": error ? errorId : undefined,
+          };
+          return (
+            <div key={period} className="flex flex-col gap-1">
+              <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+                <span className="font-display text-base font-semibold whitespace-nowrap tabular-nums">
+                  {period}
+                  <span className="text-muted ml-0.5 font-sans text-xs font-normal">
+                    限
+                  </span>
+                </span>
+                <input
+                  name={`start-${period}`}
+                  type="time"
+                  defaultValue={start}
+                  aria-label={`${period}限の開始時刻`}
+                  {...invalidProps}
+                  className={`${inputClass} px-2! tabular-nums`}
+                />
+                <span aria-hidden className="text-muted">
+                  〜
+                </span>
+                <input
+                  name={`end-${period}`}
+                  type="time"
+                  defaultValue={end}
+                  aria-label={`${period}限の終了時刻`}
+                  {...invalidProps}
+                  className={`${inputClass} px-2! tabular-nums`}
+                />
+              </div>
+              {error && (
+                <div className="pl-12">
+                  <FieldError id={errorId}>{error}</FieldError>
+                </div>
+              )}
             </div>
-            {errors.periods[period] && (
-              <span role="alert" className={`${errorClass} pl-12`}>
-                {errors.periods[period]}
-              </span>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </fieldset>
 
-      {errors.form && (
-        <p role="alert" className={errorClass}>
-          {errors.form}
-        </p>
-      )}
-      {saveError && (
-        <p role="alert" className={errorClass}>
-          {saveError}
-        </p>
-      )}
+      {errors.form && <FormError>{errors.form}</FormError>}
+      {saveError && <FormError>{saveError}</FormError>}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="bg-foreground text-background rounded px-4 py-3 font-semibold disabled:opacity-50"
-      >
-        {pending ? "保存しています…" : "保存する"}
-      </button>
+      <Button type="submit" loading={pending} className="w-full py-3">
+        {pending ? "保存しています" : "設定を保存"}
+      </Button>
     </form>
   );
 }
-
-// 入力欄の見た目は科目のフォーム（course-form.tsx）とそろえる。
-// 文字は 16px（text-base）。iPhone で入力欄を押したときに、画面が勝手に拡大されないようにするため
-const inputClass =
-  "min-w-0 rounded border border-current/30 bg-transparent px-2 py-2 text-base";
-
-const errorClass = "text-sm text-red-600 dark:text-red-400";

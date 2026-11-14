@@ -2,10 +2,12 @@
 // 科目の入力フォーム（曜日・時限・科目名・建物・階数・教室）。
 // 登録（#56）と変更（#57）で使い回す。最初の値と「送ったときの処理」を外から受け取る。
 // 入力は contracts の zod スキーマ（createCourseSchema）でチェックし、エラーは日本語で出す。
-// 送っている間はボタンを押せないようにする（API に送るのを待つため。#59）。
+// 送っている間はボタンに回る印を出し、押せないようにする（API に送るのを待つため。#59）。
+// 入力欄・エラーの見た目（inputClass、FieldError、FormError）は、設定のフォーム（settings-form.tsx）でも使う。
 "use client";
 
-import { useState } from "react";
+import { CircleAlert } from "lucide-react";
+import { useId, useState } from "react";
 
 import {
   type CreateCourse,
@@ -14,6 +16,7 @@ import {
 } from "@/contracts/courses";
 import type { PeriodTime } from "@/contracts/settings";
 
+import { Button } from "./ui/button";
 import { DAY_LABELS } from "./timetable-grid";
 
 // 時限は contracts の決まりで 1〜8
@@ -62,8 +65,9 @@ export function CourseForm({
 }: Props) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
-  // 送っている間は true（ボタンを押せないようにする）
+  // 送っている間は true（ボタンに回る印を出し、押せないようにする）
   const [pending, setPending] = useState(false);
+  const id = useId();
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -103,16 +107,29 @@ export function CourseForm({
     return time ? `${period}限（${time.start}〜${time.end}）` : `${period}限`;
   };
 
+  // 項目ごとの id（ラベルと入力欄、エラーの文をつなぐ）
+  const fieldProps = (name: FieldName) => ({
+    id: `${id}-${name}`,
+    name,
+    "aria-invalid": errors[name] ? true : undefined,
+    "aria-describedby": errors[name] ? `${id}-${name}-error` : undefined,
+    className: inputClass,
+  });
+
+  const field = (name: FieldName, optional = false) => ({
+    htmlFor: `${id}-${name}`,
+    label: FIELD_LABELS[name],
+    optional,
+    error: errors[name],
+    errorId: `${id}-${name}-error`,
+  });
+
   return (
     // noValidate：ブラウザの英語まじりの吹き出しではなく、下の日本語のメッセージで知らせる
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
       <div className="grid grid-cols-[2fr_3fr] gap-3">
-        <Field name="dayOfWeek" error={errors.dayOfWeek}>
-          <select
-            name="dayOfWeek"
-            defaultValue={initial.dayOfWeek}
-            className={inputClass}
-          >
+        <Field {...field("dayOfWeek")}>
+          <select {...fieldProps("dayOfWeek")} defaultValue={initial.dayOfWeek}>
             {dayOfWeekSchema.options.map((day) => (
               <option key={day} value={day}>
                 {DAY_LABELS[day]}曜
@@ -120,12 +137,8 @@ export function CourseForm({
             ))}
           </select>
         </Field>
-        <Field name="period" error={errors.period}>
-          <select
-            name="period"
-            defaultValue={initial.period}
-            className={inputClass}
-          >
+        <Field {...field("period")}>
+          <select {...fieldProps("period")} defaultValue={initial.period}>
             {PERIODS.map((period) => (
               <option key={period} value={period}>
                 {periodLabel(period)}
@@ -135,94 +148,117 @@ export function CourseForm({
         </Field>
       </div>
 
-      <Field name="name" error={errors.name}>
+      <Field {...field("name")}>
         <input
-          name="name"
+          {...fieldProps("name")}
           defaultValue={initial.name}
           maxLength={50}
+          placeholder="例：線形代数"
           autoComplete="off"
-          className={inputClass}
         />
       </Field>
-      <Field name="building" optional error={errors.building}>
+      <Field {...field("building", true)}>
         <input
-          name="building"
+          {...fieldProps("building")}
           defaultValue={initial.building}
           maxLength={50}
           placeholder="例：本館"
           autoComplete="off"
-          className={inputClass}
         />
       </Field>
       <div className="grid grid-cols-2 gap-3">
-        <Field name="floor" optional error={errors.floor}>
+        <Field {...field("floor", true)}>
           <input
-            name="floor"
+            {...fieldProps("floor")}
             defaultValue={initial.floor}
             maxLength={20}
             placeholder="例：3F"
             autoComplete="off"
-            className={inputClass}
           />
         </Field>
-        <Field name="room" optional error={errors.room}>
+        <Field {...field("room", true)}>
           <input
-            name="room"
+            {...fieldProps("room")}
             defaultValue={initial.room}
             maxLength={50}
             placeholder="例：301"
             autoComplete="off"
-            className={inputClass}
           />
         </Field>
       </div>
 
-      {formError && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-          {formError}
-        </p>
-      )}
+      {formError && <FormError>{formError}</FormError>}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="bg-foreground text-background rounded px-4 py-3 font-semibold disabled:opacity-50"
-      >
-        {pending ? "保存しています…" : submitLabel}
-      </button>
+      <Button type="submit" loading={pending} className="w-full py-3">
+        {pending ? "保存しています" : submitLabel}
+      </Button>
     </form>
   );
 }
 
-// 入力欄の見た目はログインフォーム（#74）とそろえる。
-// 文字は 16px（text-base）。iPhone で入力欄を押したときに、画面が勝手に拡大されないようにするため
-const inputClass =
-  "w-full rounded border border-current/30 bg-transparent px-3 py-3 text-base";
+// 入力欄の見た目（枠・背景・余白は globals.css で設定済み）。科目と設定のフォームでそろえる。
+// 文字は 16px（text-base）。iPhone で入力欄を押したときに、画面が勝手に拡大されないようにするため。
+// エラーのある欄（aria-invalid）は、枠を失敗の色にする。
+// globals.css の input の決まりは Tailwind のクラスより優先されるので、枠の色は「!」を付けて上書きする
+export const inputClass =
+  "w-full min-w-0 text-base hover:border-muted! aria-invalid:border-danger!";
+
+// 入力欄の下に出す、項目ごとのエラー
+export function FieldError({ id, children }: { id: string; children: string }) {
+  return (
+    <p
+      id={id}
+      role="alert"
+      className="text-danger flex items-start gap-1.5 text-sm [word-break:auto-phrase]"
+    >
+      <CircleAlert aria-hidden className="mt-[0.2em] size-4 shrink-0" />
+      {children}
+    </p>
+  );
+}
+
+// フォーム全体のエラー（通信の失敗、重複など）。ボタンの上に、帯で出す
+export function FormError({ children }: { children: string }) {
+  return (
+    <p
+      role="alert"
+      className="bg-danger/10 text-danger flex items-start gap-2 px-3 py-2.5 text-sm [word-break:auto-phrase]"
+    >
+      <CircleAlert aria-hidden className="mt-[0.2em] size-4 shrink-0" />
+      {children}
+    </p>
+  );
+}
 
 // ラベル + 入力欄 + エラーの 1 項目
 function Field({
-  name,
-  optional = false,
+  htmlFor,
+  label,
+  optional,
   error,
+  errorId,
   children,
 }: {
-  name: FieldName;
-  optional?: boolean;
+  htmlFor: string;
+  label: string;
+  optional: boolean;
   error?: string;
+  errorId: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="flex min-w-0 flex-col gap-1">
-      <span className="text-sm font-semibold">
-        {FIELD_LABELS[name]}
-        {optional && <span className="font-normal opacity-70">（任意）</span>}
-      </span>
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <label
+        htmlFor={htmlFor}
+        className="text-sm font-semibold whitespace-nowrap"
+      >
+        {label}
+        {optional && (
+          <span className="text-muted ml-1 text-xs font-normal">任意</span>
+        )}
+      </label>
       {children}
-      {error && (
-        <span role="alert" className="text-sm text-red-600 dark:text-red-400">
-          {error}
-        </span>
-      )}
-    </label>
+      {error && <FieldError id={errorId}>{error}</FieldError>}
+    </div>
   );
 }
