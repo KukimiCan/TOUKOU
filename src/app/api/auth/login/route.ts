@@ -21,17 +21,19 @@ export async function POST(request: Request) {
     );
   }
 
+  const isVercel = process.env.VERCEL === "1";
   if (
     !hasSupabaseEnv() ||
-    !process.env.SUPABASE_SECRET_KEY?.startsWith("sb_secret_")
+    (isVercel && !process.env.SUPABASE_SECRET_KEY?.startsWith("sb_secret_"))
   ) {
     return Response.json(
       { error: "ログインの設定が済んでいません" },
-      { status: 500 },
+      { status: 500, headers: { "Cache-Control": "private, no-store" } },
     );
   }
 
-  const loginClient = createLoginClient(request);
+  const supabase = await createClient();
+  const loginClient = isVercel ? createLoginClient(request) : supabase;
   const { data, error } = await loginClient.auth.signInWithPassword(
     parsed.data,
   );
@@ -39,7 +41,10 @@ export async function POST(request: Request) {
     if (error.status === 429) {
       return Response.json(
         { error: "しばらく待ってからもう一度お試しください" },
-        { status: 429 },
+        {
+          status: 429,
+          headers: { "Cache-Control": "private, no-store" },
+        },
       );
     }
     return Response.json(
@@ -51,22 +56,23 @@ export async function POST(request: Request) {
   if (!data.session) {
     return Response.json(
       { error: "ログインできませんでした" },
-      { status: 500 },
+      { status: 500, headers: { "Cache-Control": "private, no-store" } },
     );
   }
 
-  // サーバー専用キーを持つクライアントのセッションを Cookie に保存しない。
-  // 利用者のセッションは公開用キーの SSR クライアントに渡して保存する。
-  const supabase = await createClient();
-  const { error: sessionError } = await supabase.auth.setSession({
-    access_token: data.session.access_token,
-    refresh_token: data.session.refresh_token,
-  });
-  if (sessionError) {
-    return Response.json(
-      { error: "ログインできませんでした" },
-      { status: 500 },
-    );
+  if (isVercel) {
+    // サーバー専用キーのクライアントには Cookie を保存しない。
+    // 公開用キーの SSR クライアントへ利用者のセッションを渡す。
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+    });
+    if (sessionError) {
+      return Response.json(
+        { error: "ログインできませんでした" },
+        { status: 500, headers: { "Cache-Control": "private, no-store" } },
+      );
+    }
   }
 
   return Response.json(loginResponseSchema.parse({ ok: true }));
