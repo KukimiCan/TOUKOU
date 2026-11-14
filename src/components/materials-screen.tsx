@@ -18,6 +18,7 @@ import { type Settings, settingsResponseSchema } from "@/contracts/settings";
 import { Screen, ScrollArea } from "./ui/screen";
 import { BoardUpload } from "./board-upload";
 import { fetchApi } from "./fetch-api";
+import { useGeneration } from "./generation-provider";
 import { LoadError } from "./load-error";
 import { MaterialsList } from "./materials-list";
 import {
@@ -69,6 +70,8 @@ export function MaterialsScreen() {
   const [load, setLoad] = useState<Load>({ status: "loading" });
   // 「もう一度読み込む」を押した回数。変わるたびに読み込み直す
   const [attempt, setAttempt] = useState(0);
+  // 資料が送られた・解説が終わったときに増える。増えたら、画面を骨格に戻さずに取り直す
+  const { revision } = useGeneration();
 
   useEffect(() => {
     // 読み込みの途中で画面を離れたら、結果を使わない
@@ -83,7 +86,7 @@ export function MaterialsScreen() {
     return () => {
       ignore = true;
     };
-  }, [attempt]);
+  }, [attempt, revision]);
 
   function retry() {
     setLoad({ status: "loading" });

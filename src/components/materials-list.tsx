@@ -14,7 +14,9 @@ import type { Material } from "@/contracts/materials";
 
 import { ButtonLink } from "./ui/button-link";
 import { ScrollArea } from "./ui/screen";
+import { Spinner } from "./ui/spinner";
 import { UNKNOWN_COURSE_NAME } from "./course-list";
+import { useGeneration } from "./generation-provider";
 import { formatCreatedAt, MATERIAL_KIND_LABELS } from "./material-format";
 
 type Props = {
@@ -61,6 +63,8 @@ function MaterialRow({
   material: Material;
   courseName: string;
 }) {
+  const { generatingIds } = useGeneration();
+  const generating = generatingIds.has(material.id);
   return (
     <Link
       href={`/materials/${material.id}`}
@@ -77,7 +81,12 @@ function MaterialRow({
           </span>
         </span>
       </span>
-      {material.hasExplanation ? (
+      {generating ? (
+        <span className="text-accent inline-flex items-center gap-1.5 text-xs whitespace-nowrap">
+          <Spinner className="size-3.5" />
+          解説を作成中
+        </span>
+      ) : material.hasExplanation ? (
         <span className="bg-accent-soft text-accent inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-xs font-semibold whitespace-nowrap">
           <Sparkles aria-hidden className="size-3.5" />
           解説あり
