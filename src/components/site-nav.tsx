@@ -50,7 +50,7 @@ export function SiteNav() {
   return (
     <>
       {/* 上の段：ブランドとログアウト（全幅） */}
-      <header className="border-line bg-background/90 sticky top-0 z-20 border-b backdrop-blur">
+      <header className="border-line bg-background/90 z-20 shrink-0 border-b backdrop-blur">
         <div className="mx-auto flex w-full max-w-5xl items-center gap-3 px-4 py-2 sm:px-6">
           <Link
             href="/"
@@ -88,13 +88,10 @@ export function SiteNav() {
         </div>
       </header>
 
-      {/* スマホ：下のナビで内容が隠れないよう、画面の最後に余白を置く（body は縦並びなので order-last で最後に回す） */}
-      <div aria-hidden className="order-last h-20 shrink-0 sm:hidden" />
-
-      {/* スマホの下の段：4 つの項目を、画面の端に固定する */}
+      {/* スマホの下の段：4 つの項目。画面の一番下に置く（内容とは重ならない） */}
       <nav
         aria-label="主なページ（スマホ）"
-        className="border-line bg-background/95 fixed inset-x-0 bottom-0 z-20 border-t pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden"
+        className="border-line bg-background/95 z-20 order-last shrink-0 border-t pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden"
       >
         <ul className="mx-auto grid max-w-md grid-cols-4">
           {items.map(({ href, label, Icon }) => (

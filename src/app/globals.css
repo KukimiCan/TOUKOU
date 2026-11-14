@@ -4,12 +4,12 @@
 @custom-variant dark (&:where(.never-dark, .never-dark *));
 
 :root {
-  /* 紙の背景、墨の文字、琥珀のアクセント（明るい方針） */
-  --background: #f7f5f0;
-  --foreground: #1c1f1d;
-  --muted: #6b6f69;
-  --line: #d9d5cb;
-  --surface: #fffdf8;
+  /* 青みがかった白の背景、紺がかった墨の文字、琥珀のアクセント（清潔感のある明るい方針） */
+  --background: #f3f6fa;
+  --foreground: #16202a;
+  --muted: #5d6b7a;
+  --line: #d8e0ea;
+  --surface: #ffffff;
   --accent: #a86f22;
   --accent-soft: #f1e6cf;
   --danger: #b03a2e;

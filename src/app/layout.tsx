@@ -32,11 +32,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="ja"
       className={`${body.variable} ${label.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">
+      {/* 画面全体を端末の高さに収める。内容は上下のナビの間に置き、収まらないときだけ内容の部分がスクロールする */}
+      <body className="flex h-dvh flex-col overflow-hidden">
         <Suspense fallback={null}>
           <SiteNav />
         </Suspense>
-        <div className="flex w-full flex-1 flex-col">{children}</div>
+        <div className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto overscroll-contain">
+          {children}
+        </div>
       </body>
     </html>
   );
