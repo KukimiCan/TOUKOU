@@ -1,20 +1,24 @@
 // front 担当のファイル。
-// ホームの「次の授業」カード。どこへ行けばいいか（建物・階数・教室）が一目で分かるようにする。
-// - 次の授業が今日：右上に開始までのカウントダウン、下に移動開始の目安（#62）を出す
-// - 次の授業が明日以降（#63）：「今日の授業はありません」を大きく出し、その下に次の授業を控えめに出す
-// - 授業中（#61）：左上を「授業中」にし、右上に終了までの残り時間を出す。移動開始の目安は出さない
-// - 授業が終わった後：「この授業は終わりました」と小さく出す。
+// ホームの「次の授業」カード。ホームの主役。
+// 何の授業か・どこへ行くか（建物・階数・教室）・あと何分か・いつ動き出すかが一目で分かるようにする。
+// - 次の授業が今日：右上に開始までのカウントダウン、下の帯に移動開始の目安（#62）を出す
+// - 次の授業が明日以降（#63）：「今日の授業はありません」を出し、その下に次の授業を控えめに出す
+// - 授業中（#61）：左上を「授業中」にし、右上に終了までの残り時間、下の端に授業の進み具合の線を出す
+// - 授業が終わった後：「この授業は終わりました」と、次の授業を確かめている印を出す。
 //   すぐにホーム（home-content.tsx）が API を取り直し、次の授業に切り替わる（#65）
 // ホームを開いたままでも、時刻に合わせて表示が自動で切り替わる。
 //
 // 「今日かどうか」と残り時間は端末の時刻で決めるので、ブラウザで動く部品（Client Component）にしている。
 "use client";
 
+import { CalendarCheck, Clock, MapPin } from "lucide-react";
+
 import type { DayOfWeek } from "@/contracts/courses";
 import type { NextClass } from "@/contracts/home";
 
 import { Countdown } from "./countdown";
 import { LeaveTime } from "./leave-time";
+import { Spinner } from "./ui/spinner";
 import { useClassClock } from "./use-class-clock";
 
 const DAY_LABELS: Record<DayOfWeek, string> = {
@@ -60,91 +64,147 @@ function dayLabel(days: number, dayOfWeek: DayOfWeek): string {
 export function NextClassCard({ nextClass }: { nextClass: NextClass }) {
   const { course, startsAt, endsAt, leaveAt } = nextClass;
   const now = useClassClock();
-  // 画面に出るまでは「今日かどうか」が分からないので、何も出さない（一瞬だけ）
-  if (now === null) return null;
+  // 画面に出るまでは「今日かどうか」が分からないので、同じ大きさの骨格を出す（一瞬だけ）
+  if (now === null) {
+    return <div aria-hidden className="skeleton h-64 w-full" />;
+  }
 
   const days = daysUntil(startsAt, now);
   const isToday = days <= 0;
+  const start = new Date(startsAt).getTime();
+  const end = new Date(endsAt).getTime();
 
   const place = [course.building, course.floor, course.room]
     .filter(Boolean)
     .join(" ");
   const details = (
     <>
-      <InfoRow icon={<PinIcon />} label="場所" compact={!isToday}>
-        {place || <span className="opacity-70">教室が登録されていません</span>}
+      <InfoRow icon={<MapPin aria-hidden />} label="場所" compact={!isToday}>
+        {place ? (
+          <span className="font-semibold">{place}</span>
+        ) : (
+          <span className="text-muted">教室が登録されていません</span>
+        )}
       </InfoRow>
-      <InfoRow icon={<ClockIcon />} label="時限" compact={!isToday}>
-        {/* 例：水3｜12:20〜13:50 */}
-        {DAY_LABELS[course.dayOfWeek]}
-        {course.period}｜{timeFormat.format(new Date(startsAt))}〜
-        {timeFormat.format(new Date(endsAt))}
+      <InfoRow icon={<Clock aria-hidden />} label="時限" compact={!isToday}>
+        {/* 例：水曜 3限　12:20 – 13:50 */}
+        <span className="flex flex-wrap items-baseline gap-x-3">
+          <span className="whitespace-nowrap">
+            {DAY_LABELS[course.dayOfWeek]}曜 {course.period}限
+          </span>
+          <span className="font-display tracking-wide whitespace-nowrap tabular-nums">
+            {timeFormat.format(new Date(startsAt))} –{" "}
+            {timeFormat.format(new Date(endsAt))}
+          </span>
+        </span>
       </InfoRow>
     </>
   );
 
-  // 次の授業が明日以降：一言を大きく出し、次の授業は全体に小さい文字で控えめに出す
+  // 次の授業が明日以降：一言を出し、次の授業は全体に小さい文字で控えめに出す
   // （移動開始の目安は、明日の時刻だと紛らわしいので出さない）
   if (!isToday) {
     return (
-      <>
-        <p className="text-2xl font-bold">今日の授業はありません</p>
+      <div className="flex flex-col gap-4">
+        <p className="flex items-center gap-2.5 text-xl font-bold">
+          <CalendarCheck aria-hidden className="text-accent size-6 shrink-0" />
+          今日の授業はありません
+        </p>
         <section
-          aria-label="次の授業"
-          className="rounded-lg border border-current/20 px-5 py-4"
+          aria-labelledby="next-class-title"
+          className="border-line bg-surface border px-5 py-4"
         >
-          <div className="mb-3 flex items-center justify-between gap-3 text-sm opacity-70">
-            <p className="font-semibold">次の授業</p>
-            <p className="font-semibold">{dayLabel(days, course.dayOfWeek)}</p>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <p className="text-muted text-sm font-semibold whitespace-nowrap">
+              次の授業
+            </p>
+            <p className="bg-accent-soft text-accent rounded-sm px-2 py-0.5 text-sm font-semibold whitespace-nowrap">
+              {dayLabel(days, course.dayOfWeek)}
+            </p>
           </div>
-          <h2 className="text-lg leading-tight font-bold">{course.name}</h2>
-          <dl className="mt-2 flex flex-col gap-1">{details}</dl>
+          <h2
+            id="next-class-title"
+            className="text-lg leading-snug font-bold [word-break:auto-phrase]"
+          >
+            {course.name}
+          </h2>
+          <dl className="mt-2 flex flex-col gap-1.5">{details}</dl>
         </section>
-      </>
+      </div>
     );
   }
 
-  // 次の授業が今日。授業の前・授業中・終わった後で、見出しの行と 3 行目を変える
+  // 次の授業が今日。授業の前・授業中・終わった後で、見出しの行と下の帯を変える
   // （授業中は、移動開始の目安の「急ごう！」より「授業中」を優先する）
-  const phase =
-    now < new Date(startsAt).getTime()
-      ? "before"
-      : now < new Date(endsAt).getTime()
-        ? "inClass"
-        : "ended";
+  const phase = now < start ? "before" : now < end ? "inClass" : "ended";
   const heading = {
     before: "次の授業",
     inClass: "授業中",
     ended: "この授業は終わりました",
   }[phase];
+  // 授業の進み具合（0〜100）。授業中だけ使う
+  const progress = Math.min(
+    100,
+    Math.max(0, ((now - start) / (end - start)) * 100),
+  );
 
-  // 余白で情報のまとまりを表す（背景色や区切り線は使わない）
-  // - 見出しの行（ラベルと残り時間）と本体の間は広く（20px）
-  // - 科目名 → 場所・時限は 12px。場所と時限は同じ強さの 2 行として 6px でそろえる
   return (
     <section
-      aria-label={heading}
-      className="rounded-lg border border-current/20 px-5 pt-4 pb-5"
+      aria-labelledby="next-class-title"
+      className="border-line bg-surface border"
     >
-      {/* 残り時間の数字が無いときも、見出しの行の高さをそろえる（min-h-8） */}
-      <div className="mb-5 flex min-h-8 items-center justify-between gap-3">
-        <p className="text-sm font-semibold opacity-70">{heading}</p>
+      {/* 見出しの行：左に状態、右に残り時間。残り時間が無いときも高さをそろえる */}
+      <div className="flex min-h-16 items-start justify-between gap-4 px-5 pt-5">
+        <p
+          className={`flex items-center gap-2 text-sm font-semibold whitespace-nowrap ${
+            phase === "inClass" ? "text-accent" : "text-muted"
+          }`}
+        >
+          <span
+            aria-hidden
+            className={`size-2 shrink-0 rounded-full ${
+              phase === "ended" ? "bg-line" : "bg-accent"
+            } ${phase === "inClass" ? "animate-pulse" : ""}`}
+          />
+          {heading}
+        </p>
         {phase === "before" && (
           <Countdown until={startsAt} now={now} label="開始まで" />
         )}
         {phase === "inClass" && (
-          <Countdown until={endsAt} now={now} label="終了まで" prefix="残り" />
+          <Countdown until={endsAt} now={now} label="終了まで" />
         )}
       </div>
 
-      <h2 className="text-2xl leading-tight font-bold">{course.name}</h2>
+      <div className="px-5 pt-2 pb-5">
+        <h2
+          id="next-class-title"
+          className="text-2xl leading-snug font-bold [word-break:auto-phrase]"
+        >
+          {course.name}
+        </h2>
+        <dl className="mt-4 flex flex-col gap-2">{details}</dl>
+      </div>
 
-      <dl className="mt-3 flex flex-col gap-1.5">{details}</dl>
+      {/* 下の帯：授業の前は移動開始の目安、終わった後は次の授業を確かめている印 */}
+      {phase === "before" && <LeaveTime leaveAt={leaveAt} now={now} />}
+      {phase === "ended" && (
+        <p
+          role="status"
+          className="border-line text-muted flex items-center gap-2 border-t px-5 py-4 text-sm"
+        >
+          <Spinner />
+          次の授業を確かめています
+        </p>
+      )}
 
-      {/* 3 行目：移動開始の目安（中央揃え・アイコンなし）。授業の前だけ出す */}
-      {phase === "before" && (
-        <div className="mt-4">
-          <LeaveTime leaveAt={leaveAt} now={now} />
+      {/* 授業中：カードの下の端に、授業の進み具合を細い線で出す（数字は右上の残り時間で伝える） */}
+      {phase === "inClass" && (
+        <div aria-hidden className="bg-line h-1">
+          <div
+            className="bg-accent h-full transition-[width] duration-1000 ease-linear"
+            style={{ width: `${progress}%` }}
+          />
         </div>
       )}
     </section>
@@ -166,48 +226,23 @@ function InfoRow({
 }) {
   return (
     <div
-      className={`flex items-center gap-1.5 ${compact ? "[&_svg]:size-5" : ""}`}
+      className={`[&_svg]:text-muted flex items-start gap-2.5 [&_svg]:shrink-0 ${
+        compact
+          ? "[&_svg]:mt-0.5 [&_svg]:size-4"
+          : "[&_svg]:mt-1 [&_svg]:size-5"
+      }`}
     >
       <dt>
         {icon}
         <span className="sr-only">{label}</span>
       </dt>
-      <dd className={`leading-tight ${compact ? "text-base" : "text-xl"}`}>
+      <dd
+        className={`leading-snug [word-break:auto-phrase] ${
+          compact ? "text-base" : "text-lg"
+        }`}
+      >
         {children}
       </dd>
     </div>
-  );
-}
-
-// アイコンはライブラリを増やさないよう SVG を直接書く
-// 見た目の大きさがそろうよう、どちらも 24×24 の枠の上下 2〜22 くらいまで使う
-const iconProps = {
-  "aria-hidden": true,
-  viewBox: "0 0 24 24",
-  className: "size-6 shrink-0 opacity-70",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 2,
-  strokeLinecap: "round",
-  strokeLinejoin: "round",
-} as const;
-
-// 場所を表す地図のピン
-function PinIcon() {
-  return (
-    <svg {...iconProps}>
-      <path d="M12 22s-8-6.6-8-12a8 8 0 0 1 16 0c0 5.4-8 12-8 12z" />
-      <circle cx="12" cy="10" r="3" />
-    </svg>
-  );
-}
-
-// 時限を表す時計
-function ClockIcon() {
-  return (
-    <svg {...iconProps}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 7v5l3 2" />
-    </svg>
   );
 }
