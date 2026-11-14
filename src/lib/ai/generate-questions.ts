@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getModel, isMockAi } from "./index";
 import { mockQuestion } from "./mocks/question";
 import { questionPrompt } from "./prompts/question";
+import { assertSafeStudyOutput } from "./study-output-safety";
 import {
   generatedQuestionSchema,
   type GeneratedQuestion,
@@ -36,6 +37,9 @@ export async function generateQuestions(
 
   if (isMockAi()) return [structuredClone(mockQuestion)];
 
+  // 呼び出し元が AI の解説を渡す場合もあるため、次のモデル呼び出し前に検査する。
+  assertSafeStudyOutput(source);
+
   const { output } = await generateText({
     model: getModel(),
     system: questionPrompt,
@@ -43,6 +47,9 @@ export async function generateQuestions(
     maxOutputTokens: 8192,
     output: Output.object({ schema: questionOutputSchema }),
   });
+
+  // 解説から問題へ、画像内の命令を引き継がない。
+  assertSafeStudyOutput(output);
 
   const normalizedSource = normalizeCitation(source);
   return output.questions.flatMap(({ evidence, ...question }) => {

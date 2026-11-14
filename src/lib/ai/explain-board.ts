@@ -5,6 +5,7 @@ import { getModel, isMockAi } from "./index";
 import { explanationSchema, type Explanation } from "./explanation-schema";
 import { mockExplanation } from "./mocks/explanation";
 import { boardReadingPrompt, explanationPrompt } from "./prompts/explanation";
+import { assertSafeStudyOutput } from "./study-output-safety";
 
 const unreadableRegions = z.array(
   z.object({
@@ -82,6 +83,10 @@ export async function explainBoard(image: Uint8Array): Promise<Explanation> {
   const { output } = explanationResult.value;
   const reading =
     readingResult.status === "fulfilled" ? readingResult.value.output : null;
+
+  // 画像内の命令が AI の出力へ残った場合、解説や問題を保存させない。
+  assertSafeStudyOutput(output);
+  if (reading !== null) assertSafeStudyOutput(reading);
 
   const notes: string[] = [];
   let formulas = output.formulas;
