@@ -40,6 +40,7 @@ export async function generateQuestions(
     model: getModel(),
     system: questionPrompt,
     prompt: source,
+    maxOutputTokens: 8192,
     output: Output.object({ schema: questionOutputSchema }),
   });
 

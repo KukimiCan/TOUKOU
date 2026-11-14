@@ -48,6 +48,7 @@ export async function explainBoard(image: Uint8Array): Promise<Explanation> {
     generateText({
       model,
       system: boardReadingPrompt,
+      maxOutputTokens: 8192,
       output: Output.object({ schema: boardReadingSchema }),
       messages: [
         {
@@ -62,6 +63,7 @@ export async function explainBoard(image: Uint8Array): Promise<Explanation> {
     generateText({
       model,
       system: explanationPrompt,
+      maxOutputTokens: 8192,
       output: Output.object({ schema: boardExplanationSchema }),
       messages: [
         {
