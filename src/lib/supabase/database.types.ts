@@ -21,6 +21,7 @@ export type Database = {
           id: string;
           is_correct: boolean;
           question_id: string;
+          user_id: string | null;
         };
         Insert: {
           choice_index: number;
@@ -28,6 +29,7 @@ export type Database = {
           id?: string;
           is_correct: boolean;
           question_id: string;
+          user_id?: string | null;
         };
         Update: {
           choice_index?: number;
@@ -35,6 +37,7 @@ export type Database = {
           id?: string;
           is_correct?: boolean;
           question_id?: string;
+          user_id?: string | null;
         };
         Relationships: [
           {
@@ -214,7 +217,11 @@ export type Database = {
     };
     Functions: {
       answer_shared_question: {
-        Args: { target_choice_index: number; target_share_id: string };
+        Args: {
+          answerer_id: string | null;
+          target_choice_index: number;
+          target_share_id: string;
+        };
         Returns: {
           correct_index: number;
           explanation: string;
@@ -226,6 +233,16 @@ export type Database = {
         Returns: {
           choices: Json;
           prompt: string;
+        }[];
+      };
+      my_answer_history: {
+        Args: never;
+        Returns: {
+          answered_at: string;
+          choice_index: number;
+          is_correct: boolean;
+          prompt: string;
+          share_id: string;
         }[];
       };
       profile_periods_are_valid: { Args: { value: Json }; Returns: boolean };

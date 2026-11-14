@@ -5,10 +5,12 @@
 // - 選択肢は行全体が押せる。選んだものは色と塗りつぶした記号ではっきり分かる
 // - 回答前の問題には、正解も解説も入っていない（src/contracts/questions.ts の SharedQuestion）
 // - 回答したら、選択肢に正解・自分の回答の印を付け、「回答する」の場所に正誤と解説を入れ替えて出す（#73）
+// - 答えたあと、ログイン中なら「履歴に残しました」を結果の下に小さく出す（履歴の API を 1 回呼び、200 か 401 かで判断する）
 // - 回答は API（POST /api/shared/[shareId]/answers）に送る（#156）。失敗したら理由を出し、もう一度押せるようにする
 "use client";
 
 import { Check, Send, X } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -38,6 +40,16 @@ async function submitAnswer(
   return answerResultResponseSchema.parse(await res.json()).result;
 }
 
+// ログインしているか。履歴の API が 200 なら true、401 などなら false（回答の応答からは分からないため）
+async function checkLoggedIn(): Promise<boolean> {
+  try {
+    await fetchApi("/api/answers/history");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function SharedQuestionAnswer({ question }: Props) {
   // 選んだ選択肢の番号（まだ選んでいなければ null）
   const [selected, setSelected] = useState<number | null>(null);
@@ -47,6 +59,19 @@ export function SharedQuestionAnswer({ question }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const answered = result !== null;
+  // 履歴に残ったか（ログイン中に答えたとき）。答えたあとに 1 回だけ確かめる
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (!answered) return;
+    let ignore = false;
+    checkLoggedIn().then((ok) => {
+      if (!ignore) setSaved(ok);
+    });
+    return () => {
+      ignore = true;
+    };
+  }, [answered]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -89,7 +114,23 @@ export function SharedQuestionAnswer({ question }: Props) {
       {/* スマホでは親指の届く画面の下に、広い画面では選択肢のすぐ下に置く */}
       <div className="border-line flex shrink-0 flex-col gap-2 border-t pt-3 max-sm:mt-auto">
         {answered ? (
-          <AnswerResultView result={result} />
+          <>
+            <AnswerResultView result={result} />
+            {saved && (
+              <p
+                role="status"
+                className="text-muted text-xs [word-break:auto-phrase]"
+              >
+                履歴に残しました。
+                <Link
+                  href="/questions/history"
+                  className="text-accent ml-1 font-semibold whitespace-nowrap underline-offset-4 hover:underline"
+                >
+                  解いた問題を見る
+                </Link>
+              </p>
+            )}
+          </>
         ) : (
           <>
             {error && (

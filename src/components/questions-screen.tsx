@@ -7,6 +7,7 @@
 // - 読み込み中は、一覧の形に近い骨格を出す。読み込めなかったとき・ログインしていないときは、それぞれの表示を出す
 "use client";
 
+import { History } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -25,6 +26,7 @@ import {
   UNKNOWN_COURSE_NAME,
 } from "./course-list";
 import { EmptyQuestions, QuestionReviewList } from "./question-review-list";
+import { ButtonLink } from "./ui/button-link";
 import { QuizScreen } from "./quiz-screen";
 import { Screen, ScrollArea } from "./ui/screen";
 
@@ -206,19 +208,29 @@ export function QuestionsScreen() {
       label="Questions"
       title="問題"
       actions={
-        questions.length > 0 && (
-          <p className="text-muted text-sm whitespace-nowrap">
-            公開
-            <span className="font-display text-foreground mx-1 text-lg font-semibold tabular-nums">
-              {publicCount}
-            </span>
-            /
-            <span className="font-display mx-1 text-lg tabular-nums">
-              {questions.length}
-            </span>
-            問
-          </p>
-        )
+        <>
+          <ButtonLink
+            href="/questions/history"
+            variant="ghost"
+            icon={<History aria-hidden className="size-4" />}
+            className="whitespace-nowrap"
+          >
+            解いた問題
+          </ButtonLink>
+          {questions.length > 0 && (
+            <p className="text-muted text-sm whitespace-nowrap">
+              公開
+              <span className="font-display text-foreground mx-1 text-lg font-semibold tabular-nums">
+                {publicCount}
+              </span>
+              /
+              <span className="font-display mx-1 text-lg tabular-nums">
+                {questions.length}
+              </span>
+              問
+            </p>
+          )}
+        </>
       }
     >
       {questions.length === 0 ? (
