@@ -1,6 +1,9 @@
 // front 担当のファイル。
 // ホーム画面の中身（#65）。/api/home を取得し、次の授業カード・空き時間・短い復習を出す。
-// - 読み込み中：次の授業カードと各欄の形をした骨格（HomeSkeleton）
+// 画面は端末の高さに収める（docs/design.md「画面の構成」）。
+// - 主役：次の授業カード（何の授業か・どこへ・いつ動き出すか）
+// - 補助：空き時間の過ごし方と短い復習は、要約を 2 行までの短い行で出し、押すとモーダルで全部を出す
+// - 読み込み中：次の授業カードと要約の行の形をした骨格（HomeSkeleton）
 // - ログインしていない（401）：ログインへの案内（ログイン画面は #74）
 // - それ以外の失敗：何が起きたかと、次にどうするかの文、「もう一度読み込む」ボタン
 // 失敗の表示は、資料や問題の画面と同じ部品（load-error.tsx）を使う。
@@ -20,6 +23,7 @@ import { LoadError } from "./load-error";
 import { NextClassCard } from "./next-class-card";
 import { NoCourses } from "./no-courses";
 import { ReviewList } from "./review-list";
+import { Screen } from "./ui/screen";
 import { useClassClock } from "./use-class-clock";
 
 type State =
@@ -98,26 +102,41 @@ export function HomeContent() {
     void load();
   }
 
-  if (state.status === "loading") return <HomeSkeleton />;
+  return (
+    // ナビで「ホーム」と分かるので、見出しは読み上げだけにし、日付だけを小さく出す
+    <Screen label={useTodayLabel()} title="ホーム" hideTitle>
+      {state.status === "loading" ? (
+        <HomeSkeleton />
+      ) : state.status === "ready" ? (
+        <HomeBody home={state.home} />
+      ) : (
+        // 失敗の表示は、画面の上下の真ん中に置く
+        <div className="flex flex-1 flex-col justify-center">
+          <LoadError
+            error={
+              state.status === "unauthorized" ? unauthorizedError : loadError
+            }
+            title="ホームの情報を読み込めませんでした"
+            loginMessage="ログインすると、次の授業の場所と、移動を始める時刻がここに出ます。"
+            onRetry={retry}
+          />
+        </div>
+      )}
+    </Screen>
+  );
+}
 
-  if (state.status === "unauthorized" || state.status === "error") {
-    return (
-      <LoadError
-        error={state.status === "unauthorized" ? unauthorizedError : loadError}
-        title="ホームの情報を読み込めませんでした"
-        loginMessage="ログインすると、次の授業の場所と、移動を始める時刻がここに出ます。"
-        onRetry={retry}
-      />
-    );
-  }
-
-  const { nextClass, reviews, freeTimeSuggestions } = state.home;
+function HomeBody({ home }: { home: HomeResponse }) {
+  const { nextClass, reviews, freeTimeSuggestions } = home;
   // 表示に切り替わったときだけ、ふわっと出す（starting: = 最初に表示されたときの見た目）
   return (
-    <div className="flex flex-col gap-10 transition-opacity duration-200 starting:opacity-0">
+    <div className="flex flex-col gap-5 transition-opacity duration-200 starting:opacity-0">
       {nextClass ? <NextClassCard nextClass={nextClass} /> : <NoCourses />}
-      <FreeTimeSuggestions suggestions={freeTimeSuggestions} />
-      <ReviewList reviews={reviews} leaveAt={nextClass?.leaveAt} />
+      {/* 補助の情報。要約の行を罫線で区切って並べる（無い行は出さない） */}
+      <div className="divide-line flex flex-col divide-y empty:hidden">
+        <FreeTimeSuggestions suggestions={freeTimeSuggestions} />
+        <ReviewList reviews={reviews} />
+      </div>
     </div>
   );
 }
@@ -130,27 +149,19 @@ const todayFormat = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Tokyo",
 });
 
-export function TodayLabel() {
+function useTodayLabel(): string {
   const now = useClassClock();
-  let date = "";
-  if (now !== null) {
-    const parts = Object.fromEntries(
-      todayFormat.formatToParts(new Date(now)).map((p) => [p.type, p.value]),
-    );
-    date = `${parts.month}.${parts.day} ${parts.weekday}`;
-  }
-  return (
-    <p className="font-display text-accent text-sm font-semibold tracking-[0.2em] whitespace-nowrap uppercase tabular-nums">
-      Today
-      {date && <span className="text-muted"> · {date}</span>}
-    </p>
+  if (now === null) return "Today";
+  const parts = Object.fromEntries(
+    todayFormat.formatToParts(new Date(now)).map((p) => [p.type, p.value]),
   );
+  return `Today · ${parts.month}.${parts.day} ${parts.weekday}`;
 }
 
-// 読み込み中の骨格。次の授業カード・空き時間・復習の形を先に見せる
+// 読み込み中の骨格。次の授業カードと要約の行の形を先に見せる
 export function HomeSkeleton() {
   return (
-    <div role="status" aria-busy="true" className="flex flex-col gap-10">
+    <div role="status" aria-busy="true" className="flex flex-col gap-5">
       <span className="sr-only">ホームの情報を読み込んでいます</span>
       <div aria-hidden className="border-line bg-surface border">
         <div className="flex items-start justify-between gap-4 px-5 pt-5">
@@ -171,9 +182,8 @@ export function HomeSkeleton() {
         </div>
       </div>
       <div aria-hidden className="flex flex-col gap-3">
-        <div className="skeleton h-5 w-40" />
-        <div className="skeleton h-12 w-full" />
-        <div className="skeleton h-12 w-full" />
+        <div className="skeleton h-14 w-full" />
+        <div className="skeleton h-14 w-full" />
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 // ホームの「次の授業」カード。ホームの主役。
 // 何の授業か・どこへ行くか（建物・階数・教室）・あと何分か・いつ動き出すかが一目で分かるようにする。
 // - 次の授業が今日：右上に開始までのカウントダウン、下の帯に移動開始の目安（#62）を出す
-// - 次の授業が明日以降（#63）：「今日の授業はありません」を出し、その下に次の授業を控えめに出す
+// - 次の授業が明日以降（#63）：1 枚のカードの上の行に「今日の授業はありません」と次の授業の日を出し、次の授業を控えめに出す
 // - 授業中（#61）：左上を「授業中」にし、右上に終了までの残り時間、下の端に授業の進み具合の線を出す
 // - 授業が終わった後：「この授業は終わりました」と、次の授業を確かめている印を出す。
 //   すぐにホーム（home-content.tsx）が API を取り直し、次の授業に切り替わる（#65）
@@ -87,13 +87,16 @@ export function NextClassCard({ nextClass }: { nextClass: NextClass }) {
         )}
       </InfoRow>
       <InfoRow icon={<Clock aria-hidden />} label="時限" compact={!isToday}>
-        {/* 例：水曜 3限　12:20 – 13:50 */}
+        {/* 例：3限　12:20–13:50（今日の授業なら曜日は要らない。明日以降は右上に日を出す） */}
         <span className="flex flex-wrap items-baseline gap-x-3">
           <span className="whitespace-nowrap">
-            {DAY_LABELS[course.dayOfWeek]}曜 {course.period}限
+            <span className="font-display text-[1.15em] tabular-nums">
+              {course.period}
+            </span>
+            限
           </span>
-          <span className="font-display tracking-wide whitespace-nowrap tabular-nums">
-            {timeFormat.format(new Date(startsAt))} –{" "}
+          <span className="font-display text-[1.15em] tracking-wide whitespace-nowrap tabular-nums">
+            {timeFormat.format(new Date(startsAt))}–
             {timeFormat.format(new Date(endsAt))}
           </span>
         </span>
@@ -101,36 +104,38 @@ export function NextClassCard({ nextClass }: { nextClass: NextClass }) {
     </>
   );
 
-  // 次の授業が明日以降：一言を出し、次の授業は全体に小さい文字で控えめに出す
+  // 次の授業が明日以降：カードの上の行で「今日の授業はありません」と、次の授業の日を伝え、
+  // 次の授業は今日のときより小さい文字で控えめに出す
   // （移動開始の目安は、明日の時刻だと紛らわしいので出さない）
   if (!isToday) {
     return (
-      <div className="flex flex-col gap-4">
-        <p className="flex items-center gap-2.5 text-xl font-bold">
-          <CalendarCheck aria-hidden className="text-accent size-6 shrink-0" />
-          今日の授業はありません
-        </p>
-        <section
-          aria-labelledby="next-class-title"
-          className="border-line bg-surface border px-5 py-4"
-        >
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <p className="text-muted text-sm font-semibold whitespace-nowrap">
-              次の授業
-            </p>
-            <p className="bg-accent-soft text-accent rounded-sm px-2 py-0.5 text-sm font-semibold whitespace-nowrap">
+      <section
+        aria-labelledby="next-class-title"
+        className="border-line bg-surface border px-5 pt-4 pb-5"
+      >
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="flex items-center gap-2 text-sm font-semibold whitespace-nowrap">
+            <CalendarCheck
+              aria-hidden
+              className="text-accent size-4 shrink-0"
+            />
+            今日の授業はありません
+          </p>
+          <p className="text-muted text-sm whitespace-nowrap">
+            次は
+            <span className="bg-accent-soft text-accent ml-1.5 rounded-sm px-2 py-0.5 font-semibold">
               {dayLabel(days, course.dayOfWeek)}
-            </p>
-          </div>
-          <h2
-            id="next-class-title"
-            className="text-lg leading-snug font-bold [word-break:auto-phrase]"
-          >
-            {course.name}
-          </h2>
-          <dl className="mt-2 flex flex-col gap-1.5">{details}</dl>
-        </section>
-      </div>
+            </span>
+          </p>
+        </div>
+        <h2
+          id="next-class-title"
+          className="text-xl leading-snug font-bold [word-break:auto-phrase]"
+        >
+          {course.name}
+        </h2>
+        <dl className="mt-3 flex flex-col gap-1.5">{details}</dl>
+      </section>
     );
   }
 

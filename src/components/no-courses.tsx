@@ -1,8 +1,9 @@
 // front 担当のファイル。
 // 授業が 1 つも登録されていないとき（API の nextClass が null）のホームの表示（#63）。
 // 次の授業カードの代わりに、同じ枠の中に出し、時間割の登録へ案内する（アイコン＋短い文＋ボタン）。
-import { ArrowRight, CalendarPlus } from "lucide-react";
-import Link from "next/link";
+import { CalendarPlus } from "lucide-react";
+
+import { ButtonLink } from "./ui/button-link";
 
 export function NoCourses() {
   return (
@@ -21,16 +22,10 @@ export function NoCourses() {
           授業がまだ登録されていません
         </h2>
         <p className="text-muted text-sm [word-break:auto-phrase]">
-          時間割に授業を登録すると、ここに次の授業の場所と、移動を始める時刻が出ます。
+          時間割に登録すると、次の授業の教室と、出発の目安がここに出ます。
         </p>
       </div>
-      <Link
-        href="/timetable"
-        className="bg-foreground text-background hover:bg-foreground/85 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors"
-      >
-        時間割に授業を登録する
-        <ArrowRight aria-hidden className="size-4" />
-      </Link>
+      <ButtonLink href="/timetable">時間割に授業を登録する</ButtonLink>
     </section>
   );
 }
