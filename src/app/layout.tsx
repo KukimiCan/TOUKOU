@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Barlow_Condensed, Zen_Kaku_Gothic_New } from "next/font/google";
 import "./globals.css";
+import { Suspense } from "react";
 
 import { SiteNav } from "@/components/site-nav";
 
@@ -32,7 +33,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${body.variable} ${label.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <SiteNav />
+        <Suspense fallback={null}>
+          <SiteNav />
+        </Suspense>
         <div className="flex w-full flex-1 flex-col">{children}</div>
       </body>
     </html>
