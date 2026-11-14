@@ -48,11 +48,25 @@ function toRequestBody(body: unknown) {
   };
 }
 
-// API を呼び、成功したら Response を返す。失敗したら ApiError を投げる
-export async function fetchApi(
+// GET の結果を覚えておく時間。タブを行き来したとき、この間はすぐに表示する（#206）
+const CACHE_MS = 30_000;
+
+type Cached = { status: number; contentType: string | null; body: string };
+
+// URL ごとに、取り終わった（または取っている途中の）結果を覚える。
+// 取っている途中のものも覚えるので、同じ URL を同時に呼んでも通信は 1 本になる
+const getCache = new Map<string, { at: number; result: Promise<Cached> }>();
+
+// 何かを変えた（POST・PATCH・DELETE）ら、覚えたものは古くなるので全部捨てる
+function clearCache() {
+  getCache.clear();
+}
+
+async function send(
   url: string,
-  { method = "GET", body }: Options = {},
-): Promise<Response> {
+  method: NonNullable<Options["method"]>,
+  body: unknown,
+) {
   let res: Response;
   try {
     res = await fetch(url, { method, ...toRequestBody(body) });
@@ -62,6 +76,50 @@ export async function fetchApi(
 
   if (!res.ok) throw new ApiError(res.status, messageFor(res.status));
   return res;
+}
+
+async function readForCache(url: string): Promise<Cached> {
+  const res = await send(url, "GET", undefined);
+  return {
+    status: res.status,
+    contentType: res.headers.get("Content-Type"),
+    body: await res.text(),
+  };
+}
+
+// API を呼び、成功したら Response を返す。失敗したら ApiError を投げる。
+// GET は少しの間だけ結果を覚え、同じ URL ならその結果を返す（失敗した結果は覚えない）
+export async function fetchApi(
+  url: string,
+  { method = "GET", body }: Options = {},
+): Promise<Response> {
+  if (method !== "GET") {
+    clearCache();
+    try {
+      return await send(url, method, body);
+    } finally {
+      // 送っている間に取った GET の結果も、変更の前の古いものなので捨てる
+      clearCache();
+    }
+  }
+
+  const now = Date.now();
+  let entry = getCache.get(url);
+  if (!entry || now - entry.at > CACHE_MS) {
+    const result = readForCache(url);
+    entry = { at: now, result };
+    getCache.set(url, entry);
+    result.catch(() => {
+      if (getCache.get(url) === entry) getCache.delete(url);
+    });
+  }
+
+  const cached = await entry.result;
+  // Response の中身は 1 回しか読めないので、呼ぶたびに作り直して渡す
+  return new Response(cached.body, {
+    status: cached.status,
+    headers: cached.contentType ? { "Content-Type": cached.contentType } : {},
+  });
 }
 
 // 失敗の理由を、画面に出す文にする（ApiError 以外は、受け取ったデータの形が違ったときなど）
