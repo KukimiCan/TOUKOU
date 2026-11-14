@@ -10,6 +10,7 @@ import { explainBoard } from "@/lib/ai/explain-board";
 import type { Explanation } from "@/lib/ai/explanation-schema";
 import { generateQuestions } from "@/lib/ai/generate-questions";
 import { replaceQuestionsForMaterial } from "@/features/questions/question-store";
+import { consumeAiGenerationSlot } from "@/features/materials/ai-generation-limit";
 
 import {
   getImage,
@@ -36,9 +37,13 @@ export async function generateMaterial(
   const item = await getMaterial(userId, id);
   if (!item) return null;
   // mock のときは画像を読まない。本物のときは保存した元画像を読む
-  const image = isMockAi()
+  const mock = isMockAi();
+  const image = mock
     ? new Uint8Array()
     : ((await getImage(userId, id))?.bytes ?? new Uint8Array());
+
+  // 実 AI の費用が発生する直前に数える。mock は外部 AI を呼ばない。
+  if (!mock) await consumeAiGenerationSlot();
 
   const explanation = await explainBoard(image);
   const generated = await generateQuestions(explanationToText(explanation));

@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { generateMaterialResponseSchema } from "@/contracts/materials";
 import { getUserId } from "@/features/auth/get-user-id";
+import { AiGenerationRateLimitError } from "@/features/materials/ai-generation-limit";
 import { generateMaterial } from "@/features/materials/generate-material";
 
 type Context = { params: Promise<{ id: string }> };
@@ -31,6 +32,21 @@ export async function POST(_request: Request, { params }: Context) {
     }
     return Response.json(generateMaterialResponseSchema.parse(result));
   } catch (error) {
+    if (error instanceof AiGenerationRateLimitError) {
+      return Response.json(
+        {
+          error:
+            "AI の生成回数が上限に達しました。時間をおいてもう一度お試しください",
+        },
+        {
+          status: 429,
+          headers: {
+            "Cache-Control": "private, no-store",
+            "Retry-After": String(error.retryAfterSeconds),
+          },
+        },
+      );
+    }
     console.error("資料の AI 生成に失敗しました", error);
     return Response.json(
       {
