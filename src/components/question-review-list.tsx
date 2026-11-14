@@ -7,7 +7,7 @@
 // - 公開は API（POST /api/questions/[id]/publish）を呼ぶ（#156）。失敗したら理由を出し、もう一度押せるようにする
 "use client";
 
-import { Check, FileText, Globe, ListChecks, Lock } from "lucide-react";
+import { Check, FileText, Globe, ListChecks, Lock, Play } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
 
@@ -38,6 +38,8 @@ type Props = {
   label: ReactNode;
   // 公開できたとき。公開の状態は、科目の一覧の画面が持つ（戻っても残る）
   onPublished: (id: string, shareId: string) => void;
+  // 解く画面へのリンク（見出しの右に「解く」を出す）
+  quizHref?: string;
 };
 
 // 問題を公開して、共有 URL に使う ID（shareId）を受け取る。何度押しても同じ ID が返る
@@ -54,6 +56,7 @@ export function QuestionReviewList({
   title,
   label,
   onPublished,
+  quizHref,
 }: Props) {
   // Modal で開いている問題。閉じる動きの間も中身を残すため、開いているかは別に持つ
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -75,17 +78,27 @@ export function QuestionReviewList({
       title={title}
       actions={
         questions.length > 0 && (
-          <p className="text-muted text-sm whitespace-nowrap">
-            公開
-            <span className="font-display text-foreground mx-1 text-lg font-semibold tabular-nums">
-              {publicCount}
-            </span>
-            /
-            <span className="font-display mx-1 text-lg tabular-nums">
-              {questions.length}
-            </span>
-            問
-          </p>
+          <div className="flex shrink-0 items-center gap-3">
+            <p className="text-muted text-sm whitespace-nowrap">
+              公開
+              <span className="font-display text-foreground mx-1 text-lg font-semibold tabular-nums">
+                {publicCount}
+              </span>
+              /
+              <span className="font-display mx-1 text-lg tabular-nums">
+                {questions.length}
+              </span>
+              問
+            </p>
+            {quizHref && (
+              <ButtonLink
+                href={quizHref}
+                icon={<Play aria-hidden className="size-4" />}
+              >
+                解く
+              </ButtonLink>
+            )}
+          </div>
         )
       }
     >

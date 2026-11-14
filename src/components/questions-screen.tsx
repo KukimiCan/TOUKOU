@@ -16,6 +16,7 @@ import { type Question, questionsResponseSchema } from "@/contracts/questions";
 
 import { fetchApi } from "./fetch-api";
 import { LoadError } from "./load-error";
+import { Mascot } from "./mascot";
 import {
   BackToCourses,
   buildCourseEntries,
@@ -24,6 +25,7 @@ import {
   UNKNOWN_COURSE_NAME,
 } from "./course-list";
 import { EmptyQuestions, QuestionReviewList } from "./question-review-list";
+import { QuizScreen } from "./quiz-screen";
 import { Screen, ScrollArea } from "./ui/screen";
 
 type Load =
@@ -59,7 +61,10 @@ function QuestionsSkeleton() {
   return (
     <div role="status" aria-live="polite" className="flex flex-col">
       <span className="sr-only">問題を読み込んでいます</span>
-      {[0, 1, 2, 3].map((n) => (
+      <div aria-hidden className="flex shrink-0 justify-center pb-2">
+        <Mascot expression="smug" bob size={72} decorative />
+      </div>
+      {[0, 1, 2].map((n) => (
         <div
           key={n}
           aria-hidden
@@ -87,7 +92,10 @@ export function QuestionsLoadingScreen() {
 }
 
 export function QuestionsScreen() {
-  const courseParam = useSearchParams().get("course");
+  const searchParams = useSearchParams();
+  const courseParam = searchParams.get("course");
+  // mode=quiz のとき、その科目の問題を解く画面を出す
+  const quizMode = searchParams.get("mode") === "quiz";
   const [load, setLoad] = useState<Load>({ status: "loading" });
   // 「もう一度読み込む」を押した回数。変わるたびに読み込み直す
   const [attempt, setAttempt] = useState(0);
@@ -157,12 +165,24 @@ export function QuestionsScreen() {
       : courses.find((c) => c.id === courseParam);
   const mine = selected && questions.filter((q) => groupOf(q) === selected.id);
   if (selected && mine && mine.length > 0) {
+    const courseHref = `/questions?course=${encodeURIComponent(selected.id)}`;
+    if (quizMode) {
+      return (
+        <QuizScreen
+          key={selected.id}
+          questions={mine}
+          title={selected.name}
+          listHref={courseHref}
+        />
+      );
+    }
     return (
       <QuestionReviewList
         questions={mine}
         title={selected.name}
         label={<BackToCourses href="/questions" />}
         onPublished={handlePublished}
+        quizHref={`${courseHref}&mode=quiz`}
       />
     );
   }

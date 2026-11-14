@@ -20,6 +20,7 @@ import { homeResponseSchema, type HomeResponse } from "@/contracts/home";
 import { ApiError } from "./fetch-api";
 import { FreeTimeSuggestions } from "./free-time-suggestions";
 import { LoadError } from "./load-error";
+import { Mascot } from "./mascot";
 import { NextClassCard } from "./next-class-card";
 import { NoCourses } from "./no-courses";
 import { ReviewList } from "./review-list";
@@ -106,7 +107,13 @@ export function HomeContent() {
     // ナビで「ホーム」と分かるので、見出しは読み上げだけにし、日付だけを小さく出す
     <Screen label={useTodayLabel()} title="ホーム" hideTitle>
       {state.status === "loading" ? (
-        <HomeSkeleton />
+        <div className="flex flex-col gap-5">
+          {/* 待っている間の主役。骨格はその下で、表示に切り替わる形を先に見せる */}
+          <div className="flex shrink-0 justify-center">
+            <Mascot expression="smug" bob size={72} decorative />
+          </div>
+          <HomeSkeleton />
+        </div>
       ) : state.status === "ready" ? (
         <HomeBody home={state.home} />
       ) : (
