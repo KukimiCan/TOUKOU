@@ -281,8 +281,8 @@ function QuizResult({
   const line = allCorrect
     ? "…全問正解とか。べつに褒めてないけど？"
     : halfOrMore
-      ? "まあ、半分は取れてるじゃない。"
-      : "…ここは、もう一度見直してきて。";
+      ? "半分ね。で、残りは？"
+      : "単位って知ってる？";
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
