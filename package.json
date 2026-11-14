@@ -8,9 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
+    "test:security": "node --experimental-strip-types --test src/lib/ai/study-output-safety.test.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run lint && npm run typecheck && npm run format:check"
+    "check": "npm run test:security && npm run lint && npm run typecheck && npm run format:check"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.107",
