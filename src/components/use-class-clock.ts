@@ -3,6 +3,7 @@
 // フック = 画面の部品どうしで使い回せる処理。端末の時刻を 1 秒ごとに読み直す。
 "use client";
 
+import { appNowMs } from "@/lib/app-clock";
 import { useEffect, useState } from "react";
 
 // いまの時刻（ミリ秒）を返す。
@@ -11,7 +12,7 @@ export function useClassClock(): number | null {
   const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
-    const tick = () => setNow(Date.now());
+    const tick = () => setNow(appNowMs());
     const first = setTimeout(tick, 0);
     const timer = setInterval(tick, 1000);
     return () => {

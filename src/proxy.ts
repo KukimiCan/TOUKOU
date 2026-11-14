@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import type { Database } from "@/lib/supabase/database.types";
+import { isTrialExpired } from "@/features/auth/trial";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
 // ログインしていなくても開けるページ。API は、それぞれの route が 401 を返す。
@@ -42,7 +43,9 @@ export async function proxy(request: NextRequest) {
   });
 
   const { data } = await supabase.auth.getClaims();
-  const loggedIn = Boolean(data?.claims);
+  // 期限を過ぎた体験用アカウントは、ログインしていない扱いにする（#216）
+  const loggedIn =
+    Boolean(data?.claims) && !isTrialExpired(data?.claims.app_metadata);
 
   if (!loggedIn && !isPublicPath(request.nextUrl.pathname)) {
     // 途中で付いた cookie（セッションの更新など）を、転送先の応答にも渡す

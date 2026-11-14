@@ -6,6 +6,7 @@ import { connection } from "next/server";
 import { homeResponseSchema } from "@/contracts/home";
 import { getUserId } from "@/features/auth/get-user-id";
 import { getHome } from "@/features/home/get-home";
+import { appNow } from "@/lib/app-clock";
 
 export async function GET() {
   // 今の時刻で結果が変わるので、ビルド時に固定しない
@@ -17,6 +18,6 @@ export async function GET() {
   }
 
   return Response.json(
-    homeResponseSchema.parse(await getHome(userId, new Date())),
+    homeResponseSchema.parse(await getHome(userId, appNow())),
   );
 }
