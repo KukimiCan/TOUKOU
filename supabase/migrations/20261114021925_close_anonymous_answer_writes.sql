@@ -1,6 +1,5 @@
--- Answer writes must pass through the back API's rate limit. The API currently
--- uses its mock store; its later DB integration may call this RPC with a
--- server-only secret key. No browser role can write answers through Data API.
+-- The back API calls this RPC with a server-only secret key after rate limiting.
+-- Browser roles cannot write answers directly through the Data API.
 
 revoke insert on public.answers from anon, authenticated;
 revoke insert (question_id, choice_index) on public.answers from anon, authenticated;
