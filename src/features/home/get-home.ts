@@ -7,6 +7,7 @@
 import type { FreeTimeSuggestion, HomeResponse } from "@/contracts/home";
 import { listCourses } from "@/features/courses/course-store";
 import { getSettings } from "@/features/settings/settings-store";
+import { formatDuration } from "@/lib/format-duration";
 import { calcFreeTime } from "@/features/timetable/free-time";
 import { calcLeaveTime } from "@/features/timetable/leave-time";
 import { findNextClass } from "@/features/timetable/next-class";
@@ -14,6 +15,11 @@ import { pickReviewMaterial } from "@/features/timetable/review-pick";
 import { getSummary, listMaterials } from "@/features/materials/material-store";
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+// Date の日本時間の日付（"2026-11-14"）。今日かどうかを比べるために使う
+function toJstDay(date: Date): string {
+  return new Date(date.getTime() + JST_OFFSET_MS).toISOString().slice(0, 10);
+}
 
 // Date を日本時間の ISO 8601 文字列にする（例: "2026-11-04T12:20:00+09:00"）
 function toJstIso(date: Date): string {
@@ -24,8 +30,8 @@ function toJstIso(date: Date): string {
 // 空き時間に出す文面（計算で作る）。資料があれば復習、無ければ休憩を勧める
 function suggestionText(minutes: number, hasReview: boolean): string {
   return hasReview
-    ? `${minutes} 分の空き。次の授業の科目を復習しよう。`
-    : `${minutes} 分の空き。休憩しよう。`;
+    ? `${formatDuration(minutes)}の空き。次の授業の科目を復習しよう。`
+    : `${formatDuration(minutes)}の空き。休憩しよう。`;
 }
 
 export async function getHome(
@@ -43,7 +49,9 @@ export async function getHome(
   const leave = calcLeaveTime(now, next.startsAt, settings.travelBufferMinutes);
 
   // 移動の時間を残すため、空き時間は移動開始時刻までにする
-  const free = calcFreeTime(now, leave.leaveAt);
+  // 次の授業が今日（日本時間）でないときは、空き時間の提案を出さない
+  const isToday = toJstDay(next.startsAt) === toJstDay(now);
+  const free = isToday ? calcFreeTime(now, leave.leaveAt) : null;
   // 復習の候補：解説がある資料だけ（要約が必ず付いているため）
   const materials = (await listMaterials(userId))
     .filter((m) => m.hasExplanation)

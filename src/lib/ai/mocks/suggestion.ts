@@ -1,3 +1,4 @@
+import { formatDuration } from "../../format-duration";
 import type {
   FreeTimeSuggestionInput,
   FreeTimeSuggestionOutput,
@@ -12,5 +13,7 @@ export function mockFreeTimeSuggestion({
       ? "ひと息ついて、次の授業に備えよう。"
       : "次の授業の復習をひと区切り。";
 
-  return { text: `移動まであと${availableMinutes}分。${activity}` };
+  return {
+    text: `移動まであと${formatDuration(availableMinutes)}。${activity}`,
+  };
 }
