@@ -137,6 +137,20 @@ a:focus-visible {
   }
 }
 
+/* スマホ：押す場所は 44px 以上、入力欄は 16px（iPhone の画面拡大を防ぐ） */
+@media (max-width: 639px) {
+  button,
+  a[href] {
+    min-height: 2.75rem;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 1rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
