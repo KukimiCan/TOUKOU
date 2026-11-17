@@ -1,6 +1,6 @@
 // front 担当のファイル。
 // 全体のナビゲーション。
-// - スマホ（幅 640px 未満）：上にブランドとログアウト、下に 4 つの項目（親指で押しやすい）
+// - スマホ（幅 640px 未満）：上にブランドと AI のキー・ログアウト、下に 4 つの項目（親指で押しやすい）
 // - 広い画面：上に、ブランドと 4 つの項目、ログアウト
 // 今いる画面を強調し、移動の途中は、押したリンクに細い線を出す。
 // ログイン画面と共有ページ（/q/...）では出さない。
@@ -10,6 +10,7 @@ import {
   BookOpenText,
   CalendarDays,
   House,
+  KeyRound,
   ListChecks,
   type LucideIcon,
 } from "lucide-react";
@@ -99,7 +100,20 @@ export function SiteNav() {
             </ul>
           </nav>
 
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            {/* AI のキーの設定（#220）。毎日は使わないので、ナビの 4 項目には入れない */}
+            <Link
+              href="/settings"
+              aria-label="AI のキーの設定"
+              aria-current={pathname === "/settings" ? "page" : undefined}
+              className={`border-line hover:border-foreground hover:text-foreground relative inline-flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-sm whitespace-nowrap transition-colors ${
+                pathname === "/settings" ? "text-foreground" : "text-muted"
+              }`}
+            >
+              <KeyRound aria-hidden className="size-4" />
+              <span className="hidden sm:inline">AI キー</span>
+              <PendingLine />
+            </Link>
             <LogoutButton />
           </div>
         </div>

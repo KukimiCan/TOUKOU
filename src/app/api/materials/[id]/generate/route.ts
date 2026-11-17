@@ -1,12 +1,17 @@
 // back 担当のファイル。
 // 資料の AI 生成（POST）。解説と確認問題を作って保存する。作り直しもできる（問題は増えない）。
 // 他人の資料と無い ID は 404。AI が失敗したら 502 と分かるメッセージを返す。
+// AI のキーが未登録・使えないときは 428（画面は設定への案内を出す）（#220）。
 // 確認用: curl -X POST http://localhost:3000/api/materials/<id>/generate
 import { connection } from "next/server";
 import { z } from "zod";
 
 import { generateMaterialResponseSchema } from "@/contracts/materials";
 import { getUserId } from "@/features/auth/get-user-id";
+import {
+  AiKeyMissingError,
+  AiKeyRejectedError,
+} from "@/features/ai-keys/ai-key-store";
 import { AiGenerationRateLimitError } from "@/features/materials/ai-generation-limit";
 import { generateMaterial } from "@/features/materials/generate-material";
 
@@ -32,6 +37,21 @@ export async function POST(_request: Request, { params }: Context) {
     }
     return Response.json(generateMaterialResponseSchema.parse(result));
   } catch (error) {
+    if (error instanceof AiKeyMissingError) {
+      return Response.json(
+        { error: "AI のキーを登録してください", code: "ai_key_missing" },
+        { status: 428 },
+      );
+    }
+    if (error instanceof AiKeyRejectedError) {
+      return Response.json(
+        {
+          error: "登録した AI のキーが使えませんでした。登録し直してください",
+          code: "ai_key_rejected",
+        },
+        { status: 428 },
+      );
+    }
     if (error instanceof AiGenerationRateLimitError) {
       return Response.json(
         {

@@ -179,13 +179,15 @@ TOUKOU のプログラムから Gemini を呼ぶには、**API キー**（合言
 1. https://aistudio.google.com/ を開き、Google アカウントでログインする
 2. 画面の **Get API key**（API キーを取得）から、キーを作る
 3. 表示されたキーをコピーする
-4. Antigravity で `.env.local` を開き、次のように書き換えて保存する
+4. Antigravity で `.env.local` を開き、次のように書き換えて保存する（`AI_KEY_ENCRYPTION_SECRET` の作り方は `.env.example` に書いてある）
 
 ```
 AI_PROVIDER=google
 AI_MODEL=（#17 で決めたモデル名。まだなら空のまま）
-GOOGLE_GENERATIVE_AI_API_KEY=（コピーしたキー）
+AI_KEY_ENCRYPTION_SECRET=（.env.example の手順で作ったランダムな文字列）
 ```
+
+5. `npm run dev` を再起動し、ログインしてから右上の **AI キー** を開き、コピーしたキーを貼って登録する（キーは `.env.local` には書かない。各ユーザーが自分のキーをアプリに登録する仕組み：#220）
 
 ### ⚠️ API キーと無料枠の注意（必ず読む）
 
@@ -196,7 +198,7 @@ GOOGLE_GENERATIVE_AI_API_KEY=（コピーしたキー）
   - 配布禁止の授業資料はアップロードしない
 - 無料枠には **1 分あたり・1 日あたりの回数の上限** があります。上限を超えると `429` というエラーになります。少し待つか、`AI_PROVIDER=mock` に戻して作業を続けます
 
-✅ できたら：`.env.local` にキーが入っている（`npm run dev` を再起動すると、`AI（google）: OK` と表示される）
+✅ できたら：「AI キー」の画面に「登録済み」と出る
 
 ---
 

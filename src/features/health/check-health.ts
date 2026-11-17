@@ -1,7 +1,8 @@
 // back 担当のファイル。
 // 業務ロジックは src/features/<機能名>/ に置く。Route Handler からはこの関数を呼ぶだけにする。
 import type { HealthResponse } from "@/contracts/health";
-import { getAiProvider, hasAiKey } from "@/lib/ai";
+import { hasEncryptionSecret } from "@/features/ai-keys/key-crypto";
+import { getAiProvider, isMockAi } from "@/lib/ai";
 import { getSupabaseEnv, hasSupabaseEnv } from "@/lib/supabase/env";
 
 async function canReachSupabase() {
@@ -21,7 +22,9 @@ async function canReachSupabase() {
 export async function checkHealth(): Promise<HealthResponse> {
   const supabaseConfigured = hasSupabaseEnv();
   const supabaseReachable = await canReachSupabase();
-  const aiConfigured = hasAiKey();
+  // AI のキーは各ユーザーが登録する（#220）。サーバーには、キーを暗号化する秘密があればよい
+  const aiConfigured =
+    isMockAi() || (Boolean(process.env.AI_MODEL) && hasEncryptionSecret());
 
   return {
     ok: supabaseReachable && aiConfigured,

@@ -19,7 +19,7 @@ import {
 
 import { generateMaterialResponseSchema } from "@/contracts/materials";
 
-import { errorMessage, fetchApi } from "./fetch-api";
+import { ApiError, errorMessage, fetchApi } from "./fetch-api";
 
 // 知らせを消すまでの時間（ミリ秒）
 const NOTICE_MS = 6000;
@@ -34,6 +34,8 @@ export type Notice =
       materialId: string;
       courseName: string;
       message: string;
+      // AI のキーが未登録・使えないとき。やり直しではなく、設定への案内を出す（#220）
+      needsKey: boolean;
     };
 
 type GenerationState = {
@@ -106,6 +108,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
             materialId,
             courseName,
             message: errorMessage(e),
+            needsKey: e instanceof ApiError && e.status === 428,
           })),
         )
         .finally(() => {
