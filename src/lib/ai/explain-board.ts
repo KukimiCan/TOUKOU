@@ -36,14 +36,18 @@ function formulaKey(formula: string): string {
 }
 
 // 画像のバイナリデータから解説を生成する。資料との紐づけ・保存は呼び出し元で行う。
+// apiKey は、そのユーザーが登録した AI のキー（mock のときは使わない）。
 // 解説の呼び出しが失敗したときは例外を投げる（呼び出し元が 502 を返す）。
 // 数式の読み取りの呼び出しが失敗したとき、または読み取りが空のときは、照合せずに注記を残す。
-export async function explainBoard(image: Uint8Array): Promise<Explanation> {
+export async function explainBoard(
+  image: Uint8Array,
+  apiKey: string,
+): Promise<Explanation> {
   if (isMockAi()) {
     return structuredClone(mockExplanation);
   }
 
-  const model = getModel();
+  const model = getModel(apiKey);
   const imagePart = { type: "file", mediaType: "image", data: image } as const;
   const [readingResult, explanationResult] = await Promise.allSettled([
     generateText({

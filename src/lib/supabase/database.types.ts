@@ -211,6 +211,30 @@ export type Database = {
           },
         ];
       };
+      user_ai_keys: {
+        Row: {
+          encrypted_key: string;
+          key_hint: string;
+          provider: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          encrypted_key: string;
+          key_hint: string;
+          provider: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          encrypted_key?: string;
+          key_hint?: string;
+          provider?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;

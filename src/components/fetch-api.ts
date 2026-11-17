@@ -26,6 +26,8 @@ function messageFor(status: number) {
       return "データが見つかりません。画面を読み込み直してください。";
     case 400:
       return "入力の内容を確かめてください。";
+    case 428:
+      return "AI のキーが未登録か、使えなくなっています。設定から登録してください。";
     default:
       return "少し時間をおいて、もう一度試してください。";
   }

@@ -16,6 +16,7 @@ const timingInstructions =
 
 export async function generateFreeTimeSuggestion(
   input: FreeTimeSuggestionInput,
+  apiKey: string,
 ): Promise<FreeTimeSuggestionOutput> {
   const suggestion = freeTimeSuggestionInputSchema.parse(input);
   const fallback = mockFreeTimeSuggestion(suggestion);
@@ -24,7 +25,7 @@ export async function generateFreeTimeSuggestion(
   const { availableMinutes, reviewCourseName } = suggestion;
   try {
     const { output } = await generateText({
-      model: getModel(),
+      model: getModel(apiKey),
       system: suggestionPrompt,
       // 科目名を外部に送らず、復習候補の有無だけを使う。
       prompt: JSON.stringify({

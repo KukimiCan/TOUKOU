@@ -29,8 +29,10 @@ function normalizeCitation(text: string): string {
 }
 
 // 資料の本文や板書の解説から確認問題を生成する。資料との紐づけは呼び出し元で行う。
+// apiKey は、そのユーザーが登録した AI のキー（mock のときは使わない）。
 export async function generateQuestions(
   sourceText: string,
+  apiKey: string,
 ): Promise<GeneratedQuestion[]> {
   const source = sourceText.trim();
   if (!source) return [];
@@ -41,7 +43,7 @@ export async function generateQuestions(
   assertSafeStudyOutput(source);
 
   const { output } = await generateText({
-    model: getModel(),
+    model: getModel(apiKey),
     system: questionPrompt,
     prompt: source,
     maxOutputTokens: 8192,

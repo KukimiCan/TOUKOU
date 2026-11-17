@@ -1,5 +1,6 @@
 // AI 担当のファイル。
 // どの AI（OpenAI / Google Gemini / mock）を使うかを環境変数で切り替える。
+// AI のキーは共有せず、各ユーザーが自分のキーを登録する（#220）。呼び出す側が、その人のキーを渡す。
 // 生成する関数（解説、要約、確認問題など）はこのフォルダに 1 機能 1 ファイルで追加する。
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
@@ -21,33 +22,49 @@ export function isMockAi() {
   return getAiProvider() === "mock";
 }
 
-// AI SDK（https://ai-sdk.dev）の generateText などに渡すモデルを返す。
-// mock のときは呼ばないこと（先に isMockAi() で分岐する）。
-export function getModel() {
-  const provider = getAiProvider();
+// 使うモデル名。mock のときは呼ばないこと
+export function getModelId() {
   const modelId = process.env.AI_MODEL;
+  if (!modelId) {
+    throw new Error("AI_MODEL が設定されていません（.env.local）。");
+  }
+  return modelId;
+}
 
+// AI SDK（https://ai-sdk.dev）の generateText などに渡すモデルを返す。
+// apiKey は、そのユーザーが登録したキー（src/features/ai-keys/）。
+// mock のときは呼ばないこと（先に isMockAi() で分岐する）。
+export function getModel(apiKey: string) {
+  const provider = getAiProvider();
   if (provider === "mock") {
     throw new Error(
       "AI_PROVIDER=mock では getModel() を使えません。isMockAi() で分岐してください。",
     );
   }
-  if (!modelId) {
-    throw new Error("AI_MODEL が設定されていません（.env.local）。");
-  }
 
-  if (provider === "openai") {
-    return createOpenAI({ apiKey: process.env.OPENAI_API_KEY })(modelId);
-  }
-  return createGoogleGenerativeAI({
-    apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-  })(modelId);
+  const modelId = getModelId();
+  if (provider === "openai") return createOpenAI({ apiKey })(modelId);
+  return createGoogleGenerativeAI({ apiKey })(modelId);
 }
 
-// キーの値は返さず、設定されているかどうかだけを返す（health API 用）。
-export function hasAiKey() {
-  const provider = getAiProvider();
-  if (provider === "mock") return true;
-  if (provider === "openai") return Boolean(process.env.OPENAI_API_KEY);
-  return Boolean(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
+// AI のキーが無効・権限切れで失敗したか。キーの登録し直しを案内するために使う。
+// AI SDK は、再試行のあとの失敗を lastError に、包んだ失敗を cause に入れるので、たどって確かめる。
+export function isAiKeyRejected(error: unknown): boolean {
+  for (let e = error, depth = 0; e && depth < 5; depth += 1) {
+    if (typeof e !== "object") return false;
+    const { statusCode, responseBody, message } = e as {
+      statusCode?: unknown;
+      responseBody?: unknown;
+      message?: unknown;
+    };
+    if (statusCode === 401 || statusCode === 403) return true;
+    if (statusCode === 400) {
+      const text = `${String(responseBody ?? "")} ${String(message ?? "")}`;
+      if (/API[_ ]?KEY/i.test(text)) return true;
+    }
+    e =
+      (e as { lastError?: unknown }).lastError ??
+      (e as { cause?: unknown }).cause;
+  }
+  return false;
 }

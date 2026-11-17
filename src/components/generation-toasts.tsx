@@ -2,11 +2,12 @@
 // 解説の生成が終わったときの知らせ。画面の上（ナビの下）に出し、6 秒で自動で消える（× で閉じられる）。
 // - 成功：「解説ができました：<科目名>」と「開く」（資料の詳細へ）
 // - 失敗：「解説を作れませんでした」と「もう一度」（同じ生成をもう一度作る）
+//   AI のキーが未登録・使えないときは、「もう一度」の代わりに「設定する」（AI のキーの画面へ）（#220）
 // 読み上げのため、知らせの 1 件ずつに role="status" を付ける。
 // 知らせは内容の上に重ねて出し、画面の高さや並びを押し下げない。
 "use client";
 
-import { CircleAlert, RefreshCw, Sparkles, X } from "lucide-react";
+import { CircleAlert, KeyRound, RefreshCw, Sparkles, X } from "lucide-react";
 
 import { Button } from "./ui/button";
 import { ButtonLink } from "./ui/button-link";
@@ -54,18 +55,30 @@ export function GenerationToasts() {
                     {notice.message}
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="px-3"
-                  icon={<RefreshCw aria-hidden className="size-4" />}
-                  onClick={() => {
-                    dismissNotice(notice.id);
-                    startGeneration(notice.materialId, notice.courseName);
-                  }}
-                >
-                  もう一度
-                </Button>
+                {notice.needsKey ? (
+                  <ButtonLink
+                    href="/settings"
+                    variant="secondary"
+                    className="px-3"
+                    icon={<KeyRound aria-hidden className="size-4" />}
+                    onClick={() => dismissNotice(notice.id)}
+                  >
+                    設定する
+                  </ButtonLink>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="px-3"
+                    icon={<RefreshCw aria-hidden className="size-4" />}
+                    onClick={() => {
+                      dismissNotice(notice.id);
+                      startGeneration(notice.materialId, notice.courseName);
+                    }}
+                  >
+                    もう一度
+                  </Button>
+                )}
               </>
             )}
             <button
